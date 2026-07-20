@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cityblend — what's your geographical identity?</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1>what's your geographical identity?</h1>
+      <p class="subhead">enter the cities you've lived in, get a name and a line that's actually about you.</p>
+    </header>
+
+    <section class="example" aria-label="example card">
+      <div class="card">
+        <p class="card-handle">@sofia</p>
+        <h2 class="card-identity">the moscelonian</h2>
+        <p class="card-line">moscow-raised, did five years in london, chose barcelona anyway</p>
+
+        <div class="card-timeline">
+          <div class="dot"></div>
+          <div class="line"></div>
+          <div class="dot"></div>
+          <div class="line"></div>
+          <div class="dot dot-current"></div>
+        </div>
+
+        <p class="card-path">moscow → london → barcelona</p>
+        <p class="card-footer">and you? → cityblend.app</p>
+      </div>
+    </section>
+
+    <div class="cta">
+      <button id="make-yours-btn" type="button">make yours</button>
+    </div>
+
+    <section id="form-section" class="form-section" hidden>
+      <form id="blend-form" novalidate>
+        <div class="field">
+          <label for="handle">handle / name</label>
+          <input type="text" id="handle" name="handle" maxlength="30" placeholder="@you" required>
+        </div>
+
+        <div class="field">
+          <label for="birth-city">birth city</label>
+          <input type="text" id="birth-city" name="birthCity" maxlength="40" placeholder="where it started" required>
+        </div>
+
+        <div class="field" id="between-cities-field">
+          <label>cities lived in between <span class="hint">(optional, chronological)</span></label>
+          <div id="between-cities-list"></div>
+          <button type="button" id="add-city-btn" class="secondary-btn">+ add a city</button>
+          <p class="cap-note" id="cap-note"></p>
+        </div>
+
+        <div class="field">
+          <label for="current-city">city you live in now</label>
+          <input type="text" id="current-city" name="currentCity" maxlength="40" placeholder="where you are" required>
+        </div>
+
+        <button type="submit" id="submit-btn">generate my blend</button>
+        <p class="form-status" id="form-status" hidden></p>
+      </form>
+    </section>
+
+    <footer class="site-footer">
+      <a href="#" id="stats-link">stats</a>
+    </footer>
+  </main>
+
+  <template id="between-city-row-template">
+    <div class="between-city-row">
+      <input type="text" class="between-city-input" maxlength="40" placeholder="a city in between">
+      <input type="number" class="between-city-years" placeholder="years" min="0" max="99">
+      <button type="button" class="remove-city-btn" aria-label="remove city">×</button>
+    </div>
+  </template>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
