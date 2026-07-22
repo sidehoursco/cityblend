@@ -48,6 +48,10 @@ body {
   margin-bottom: 28px;
 }
 
+.example[hidden] {
+  display: none;
+}
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
