@@ -159,12 +159,14 @@ years per stop: ${yearsLine}
 
   const json = await res.json();
   const text = json.content?.[0]?.text || '';
+  const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
 
   try {
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(stripped);
     if (parsed.identity && parsed.line) return parsed;
-  } catch {
-    // fall through to fallback below
+    console.error('model JSON missing identity/line:', text);
+  } catch (err) {
+    console.error('unparseable model output:', text);
   }
   return { identity: 'the unblended', line: 'this one confused even the model — try again' };
 }
