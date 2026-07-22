@@ -48,6 +48,10 @@ body {
   margin-bottom: 28px;
 }
 
+.example[hidden] {
+  display: none;
+}
+
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
@@ -126,7 +130,8 @@ body {
 }
 
 #make-yours-btn,
-#submit-btn {
+#submit-btn,
+#regenerate-btn {
   background: var(--accent);
   color: white;
   border: none;
@@ -137,8 +142,20 @@ body {
 }
 
 #make-yours-btn:hover,
-#submit-btn:hover {
+#submit-btn:hover,
+#regenerate-btn:hover {
   opacity: 0.9;
+}
+
+#submit-btn:disabled,
+#regenerate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.result-actions {
+  text-align: center;
+  margin-top: 16px;
 }
 
 .form-section {
