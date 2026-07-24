@@ -105,8 +105,8 @@ async function generate(payload) {
     if (!response.ok) {
       formStatus.hidden = false;
       formStatus.textContent = data.error || 'something went wrong, try again.';
-      if (typeof data.remaining === 'number') {
-        remainingNote.textContent = `${data.remaining} of 3 left this hour`;
+      if (typeof data.remaining === 'number' && typeof data.limit === 'number') {
+        remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
       }
       return;
     }
@@ -117,7 +117,7 @@ async function generate(payload) {
     resultLine.textContent = data.line;
     resultPath.textContent = data.path.join(' → ');
     buildTimeline(resultTimeline, data.path.length);
-    remainingNote.textContent = `${data.remaining} of 3 left this hour`;
+    remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;
     resultSection.scrollIntoView({ behavior: 'smooth' });

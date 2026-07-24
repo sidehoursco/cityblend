@@ -205,10 +205,10 @@ module.exports = async function handler(req, res) {
   }
 
   if (limits.globalLimited) {
-    return res.status(429).json({ error: 'cityblend hit its daily limit — try again tomorrow', remaining: 0 });
+    return res.status(429).json({ error: 'cityblend hit its daily limit — try again tomorrow', remaining: 0, limit: HOURLY_LIMIT });
   }
   if (limits.ipLimited) {
-    return res.status(429).json({ error: 'you\'ve hit the hourly limit — try again later', remaining: 0 });
+    return res.status(429).json({ error: 'you\'ve hit the hourly limit — try again later', remaining: 0, limit: HOURLY_LIMIT });
   }
 
   try {
@@ -218,6 +218,7 @@ module.exports = async function handler(req, res) {
       line: blend.line,
       path: validation.data.path,
       remaining: limits.remaining,
+      limit: HOURLY_LIMIT,
     });
   } catch (err) {
     console.error(err);
