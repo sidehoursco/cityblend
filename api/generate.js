@@ -76,7 +76,7 @@ Here is the pattern. Note what every single one has in common: short, at most tw
 
 Do all of the above thinking silently. Do not write your reasoning, your discarded first idea, or any commentary — output the JSON object and nothing else.
 
-Last check before you answer, in this order: (1) does the identity contain two cities; (2) is the line 12 words or fewer; (3) does it name two cities at most; (4) does it make any claim about geography, climate, language or direction; (5) is it about the person rather than the route. If any check fails, fix it and re-check.
+Last check before you answer, in this order: (1) does the identity blend two cities; (2) is the line 12 words or fewer; (3) does it name two cities at most; (4) does it make any claim about geography, climate, language or direction; (5) does it contain he/she/his/her/him — if so rewrite it, you cannot know the person's gender; (6) is it about the person rather than the route. If any check fails, fix it and re-check.
 
 Respond with ONLY a JSON object, no markdown formatting, no code fences, no explanation, in exactly this shape:
 {"identity": "the ___", "line": "___"}`;
