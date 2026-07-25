@@ -209,9 +209,30 @@ regenerateBtn.addEventListener('click', () => {
   if (lastPayload) generate(lastPayload);
 });
 
-const HOLD_HINT = IS_IOS
-  ? 'or press and hold the card, then choose Save to Photos'
+// Probed once with a throwaway file: navigator.canShare only reports honestly
+// when handed the kind of payload we actually intend to send.
+const CAN_SHARE_FILES = (() => {
+  try {
+    const probe = new File([new Blob([''], { type: 'image/png' })], 'p.png', { type: 'image/png' });
+    return !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+  } catch (err) {
+    return false;
+  }
+})();
+
+// Posting is the point, so the guidance leads with it. Press-and-hold is a
+// fallback and stays out of the way unless the share sheet actually fails.
+const HINT_BEFORE = CAN_SHARE_FILES
+  ? 'then pick Instagram to add it to your story'
   : 'or right-click the card to save it';
+const HINT_AFTER = CAN_SHARE_FILES
+  ? 'saved — now add it to your story on Instagram'
+  : 'saved — now open Instagram and add it to your story';
+const HINT_HOLD = IS_IOS
+  ? 'press and hold the card, then choose Save to Photos'
+  : 'right-click the card to save it';
+
+saveBtn.textContent = CAN_SHARE_FILES ? 'share my card' : 'download my card';
 
 function resetImage() {
   if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
@@ -234,7 +255,8 @@ async function prepareImage() {
     resultImage.addEventListener('load', () => {
       resultImage.hidden = false;
       resultCard.hidden = true;
-      saveHint.textContent = HOLD_HINT;
+      saveHint.textContent = HINT_BEFORE;
+      saveHint.classList.remove('save-hint--done');
       saveHint.hidden = false;
     }, { once: true });
     resultImage.src = lastImageUrl;
@@ -266,19 +288,23 @@ async function saveCard() {
       return;
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = 'save my card';
+      saveBtn.textContent = CAN_SHARE_FILES ? 'share my card' : 'download my card';
     }
   }
 
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  if (CAN_SHARE_FILES) {
     try {
       await navigator.share({ files: [file] });
       nudgeToInstagram();
       return;
     } catch (err) {
-      // dismissing the sheet isn't a failure; anything else falls through to
-      // the visible image, which is always saveable by long-press
+      // dismissing the sheet isn't a failure — leave the guidance as it was
       if (err && err.name === 'AbortError') return;
+      // anything else: surface press-and-hold, which always works
+      saveHint.textContent = HINT_HOLD;
+      saveHint.classList.remove('save-hint--done');
+      saveHint.hidden = false;
+      return;
     }
   }
 
@@ -296,7 +322,7 @@ async function saveCard() {
 // Saving is not the goal — posting is. Without this people save the image and
 // stop, because nothing told them there was a next step.
 function nudgeToInstagram() {
-  saveHint.textContent = 'saved. now open Instagram and add it to your story →';
+  saveHint.textContent = HINT_AFTER;
   saveHint.classList.add('save-hint--done');
   saveHint.hidden = false;
 }
