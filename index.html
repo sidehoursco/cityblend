@@ -49,17 +49,21 @@
           </div>
         </div>
 
+        <!-- Reverted from ORIGIN/NOW: matching the card's own vocabulary made
+             the field genuinely more ambiguous ("origin" reads as country/
+             ethnic origin as easily as birth city). Clarity for conversion
+             beats a callback to the card — styling still ties the two
+             together, wording doesn't need to. -->
         <div class="field">
-          <!-- Labeled to match the example card's own ORIGIN/NOW badges, shown
-               moments earlier — a callback rather than parallel-but-different
-               wording ("birth city" vs "origin"). -->
-          <label for="birth-city">origin</label>
+          <label for="birth-city">birth city</label>
           <input type="text" id="birth-city" name="birthCity" maxlength="40" placeholder="where it started" required>
         </div>
 
         <div class="field">
-          <label for="current-city">now</label>
-          <input type="text" id="current-city" name="currentCity" maxlength="40" placeholder="where you are" required>
+          <label for="current-city">current city</label>
+          <!-- "where you are" read like it'd accept a day-trip location;
+               "where you live" is unambiguous about meaning residence. -->
+          <input type="text" id="current-city" name="currentCity" maxlength="40" placeholder="where you live" required>
         </div>
 
         <!-- Deliberately last: the two required fields above are the whole
