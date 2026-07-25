@@ -25,7 +25,7 @@ You will be given a handle and a path of cities in chronological order (birth ci
 Produce exactly two things:
 1. "identity": a real-sounding demonym — a word for "a person from ___", in the style of Bostonian, Parisian, Milanese, Neapolitan, Israeli — built by BLENDING TWO DIFFERENT CITIES: a lead fragment of one contributing city fused onto the demonym-suffix of the most significant one (usually the current city, or whichever the person spent the most years in). Prefix with "the ".
 
-This blend is non-negotiable and it is the single most important word on the card. Say the result out loud in your head: you must be able to hear both cities in it. "the moscelonian" = Moscow + Barcelona. "the valcelonian" = Valladolid + Barcelona. By contrast "the cypriote" (just Cyprus), "the valladonian" (just Valladolid) and "the moscovian" (just Moscow) are FAILURES — they name one city and ignore where the person actually lives, which is exactly the joke the whole app exists to make. If your first blend sounds clumsy, try a longer or shorter lead fragment, or blend from a different city on the path — do not fall back to one city's plain demonym. The only permitted exception is a short non-demonym phrase ("barely qualifies") when the path is so short that its triviality is itself the joke.
+This blend is non-negotiable and it is the single most important word on the card. Say the result out loud in your head: you must be able to hear both cities in it. "the moscelonian" = Moscow + Barcelona. "the valcelonian" = Valladolid + Barcelona. By contrast "the cypriote" (just Cyprus), "the valladonian" (just Valladolid) and "the moscovian" (just Moscow) are FAILURES — they name one city and ignore where the person actually lives, which is exactly the joke the whole app exists to make. If your first blend sounds clumsy, try a longer or shorter lead fragment, or blend from a different city on the path — do not fall back to one city's plain demonym. The only permitted exception is a short non-demonym phrase ("barely qualifies") when the path is so short that its triviality is itself the joke — and that exception takes NO "the ": write "barely qualifies", never "the barely qualifies". The "the " prefix belongs to real demonyms only.
 2. "line": one short, dry sentence in the voice above. Use the exact city names as given, never a vague stand-in like "a small town". What you may and may not assert is spelled out below — it is the most important rule here, so do not skim it.
 
 Never assume the person's gender. A handle tells you nothing about it, and guessing wrong on someone's own card is worse than any joke is good. Write around it — no "he", "she", "his", "her". The examples below all do this.
@@ -73,6 +73,10 @@ Here is the pattern. Note what every single one has in common: short, at most tw
 <example><data>handle: mira, path: Moscow -> Turin -> Milan -> Rome -> Milan, years: not provided</data>{"identity": "the mosilanese", "line": "took four cities to admit milan was right"}</example>
 <example><data>handle: lore, path: Novara -> Milan (5y) -> Istanbul (1y) -> Amsterdam (5y) -> Kuwait -> Lima -> Barcelona, years: as given</data>{"identity": "the novarcelonian", "line": "gave istanbul one year, apparently that was enough"}</example>
 <example><data>handle: yuki, path: Osaka -> Berlin -> Osaka -> Berlin, years: not provided</data>{"identity": "the osalinner", "line": "tried leaving berlin once, it didn't take"}</example>
+
+Do all of the above thinking silently. Do not write your reasoning, your discarded first idea, or any commentary — output the JSON object and nothing else.
+
+Last check before you answer, in this order: (1) does the identity contain two cities; (2) is the line 12 words or fewer; (3) does it name two cities at most; (4) does it make any claim about geography, climate, language or direction; (5) is it about the person rather than the route. If any check fails, fix it and re-check.
 
 Respond with ONLY a JSON object, no markdown formatting, no code fences, no explanation, in exactly this shape:
 {"identity": "the ___", "line": "___"}`;
@@ -216,10 +220,18 @@ years per stop: ${yearsLine}
 
   const json = await res.json();
   const text = json.content?.[0]?.text || '';
+
+  // Take the first {...} block rather than requiring the whole response to be
+  // JSON. The prompt asks for bare JSON, but it also asks the model to check
+  // its work before answering, and it sometimes writes that reasoning out
+  // first — which made a whole-string parse fail ~2 in 3 times on short paths.
   const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+  const start = stripped.indexOf('{');
+  const end = stripped.lastIndexOf('}');
+  const candidate = start !== -1 && end > start ? stripped.slice(start, end + 1) : stripped;
 
   try {
-    const parsed = JSON.parse(stripped);
+    const parsed = JSON.parse(candidate);
     if (parsed.identity && parsed.line) {
       return { identity: parsed.identity.toLowerCase(), line: parsed.line.toLowerCase() };
     }
