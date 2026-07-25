@@ -1,19 +1,19 @@
-/* Tokens deliberately pulled from the card's own palette (js/card-image.js,
-   .card in this file) rather than kept as a separate week-1 theme, so the
-   page and the card read as one product instead of a shell with a designed
-   object bolted onto it. --ink matches the card's ground colour; --accent
-   is the same near-black, used for primary buttons instead of a generic
-   green, since the card has no single accent of its own to borrow (its line
-   colour is per-person). */
+/* Dark page, tonally distinct from the card rather than colour-matched to
+   it: page ground (--bg) is a plain neutral grey a few steps lighter than
+   the card's own #0D1014, so the card still reads as the darkest, densest
+   object on the page (a lightness gap, not a hue one — no colour here has
+   to get along with whichever of the 9 per-person line colours a given
+   card lands on). --accent is neutral light for the same reason: a button
+   colour that never fights with the card's accent instead of trying to
+   match it. */
 :root {
-  --ink: #14161A;
-  --muted: #6B7078;
-  --bg: #F5F4F0;
-  --card-bg: #ffffff;
-  --accent: #14161A;
-  --accent-contrast: #ffffff;
-  --accent-light: #E4E5E0;
-  --border: #E1E0DA;
+  --ink: #F2F4F0;
+  --muted: #8B929A;
+  --bg: #1C2024;
+  --accent: #F2F4F0;
+  --accent-contrast: #14161A;
+  --accent-light: #262B31;
+  --border: #40464D;
 }
 
 * {
@@ -55,8 +55,12 @@ body {
 
 /* Block, not flex: the card's only child is absolutely positioned, so it has
    no intrinsic width and a flex parent collapses it to 0. */
+/* The form stays visible (not hidden) once a result appears, so the result
+   card is a sibling sitting directly under the submit button — needs its
+   own top gap, not just the bottom one inherited from the example card use. */
 .cardwrap {
   display: block;
+  margin-top: 28px;
   margin-bottom: 28px;
 }
 
@@ -85,6 +89,7 @@ body {
   border-radius: 4cqw;
   background: #0D1014;
   color: #F2F4F0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --line: #F2B33D;
   --n: 3;
@@ -401,7 +406,8 @@ input[type="number"] {
   font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: white;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 input[type="text"]:focus,
@@ -418,7 +424,7 @@ input[type="number"]:focus {
   min-height: 48px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: white;
+  background: var(--bg);
   padding-left: 14px;
 }
 
