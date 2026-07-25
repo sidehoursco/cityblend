@@ -223,6 +223,9 @@ body {
   font-size: calc(4.5cqw - var(--over) * 0.12cqw);
   font-weight: 500;
   letter-spacing: -0.015em;
+  /* the card is deliberately all-lowercase; city names arrive however the
+     person typed them, so normalise here rather than trusting the input */
+  text-transform: lowercase;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -257,7 +260,7 @@ body {
 
 #make-yours-btn,
 #submit-btn,
-#regenerate-btn {
+#save-btn {
   background: var(--accent);
   color: white;
   border: none;
@@ -269,19 +272,65 @@ body {
 
 #make-yours-btn:hover,
 #submit-btn:hover,
-#regenerate-btn:hover {
+#save-btn:hover {
   opacity: 0.9;
 }
 
 #submit-btn:disabled,
+#save-btn:disabled,
 #regenerate-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* Saving is the point of the card, so it's the primary action; regenerate is
+   quieter because it spends one of only three generations an hour. */
+#regenerate-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 13px 24px;
+  font-size: 0.95rem;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+#regenerate-btn:hover {
+  border-color: var(--accent);
+}
+
 .result-actions {
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
   margin-top: 16px;
+}
+
+.result-actions .form-status {
+  flex-basis: 100%;
+  margin-top: 2px;
+}
+
+.save-fallback {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.save-fallback__hint {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.save-fallback img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  margin-inline: auto;
 }
 
 .form-section {

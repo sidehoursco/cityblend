@@ -19,6 +19,18 @@ const resultLine = document.getElementById('result-line');
 const resultRoute = document.getElementById('result-route');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const remainingNote = document.getElementById('remaining-note');
+const saveBtn = document.getElementById('save-btn');
+const saveFallback = document.getElementById('save-fallback');
+const saveFallbackImg = document.getElementById('save-fallback__img');
+
+// Everything the exported PNG needs, kept from the last successful generation.
+let lastCard = null;
+
+// Every browser on iOS runs WebKit — Apple requires it — so Chrome on an
+// iPhone inherits Safari's broken `download` attribute. Detect the platform,
+// not the browser.
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // Transit lines have colours; so does each person's route. Curated rather
 // than generated, so a hash can never land on a muddy or clashing hue.
@@ -149,6 +161,19 @@ async function generate(payload) {
     }
 
     lastPayload = payload;
+    lastCard = {
+      handle: payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`,
+      identity: data.identity,
+      line: data.line,
+      path: data.path,
+      years: data.years,
+      color: lineColorFor(data.path),
+    };
+    // a fresh generation invalidates any previously rendered image
+    saveFallback.hidden = true;
+    if (saveFallbackImg.src.startsWith('blob:')) URL.revokeObjectURL(saveFallbackImg.src);
+    saveFallbackImg.removeAttribute('src');
+
     resultHandle.textContent = payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`;
     resultIdentity.textContent = data.identity;
     resultLine.textContent = data.line;
@@ -156,7 +181,7 @@ async function generate(payload) {
     buildRoute(resultRoute, data.path, data.years);
     // spacing compresses off --n; the line colour is the person's own
     resultCard.style.setProperty('--n', data.path.length);
-    resultCard.style.setProperty('--line', lineColorFor(data.path));
+    resultCard.style.setProperty('--line', lastCard.color);
     remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;
@@ -177,5 +202,62 @@ form.addEventListener('submit', (event) => {
 regenerateBtn.addEventListener('click', () => {
   if (lastPayload) generate(lastPayload);
 });
+
+function showSaveFallback(blob) {
+  if (saveFallbackImg.src.startsWith('blob:')) URL.revokeObjectURL(saveFallbackImg.src);
+  saveFallbackImg.src = URL.createObjectURL(blob);
+  saveFallback.hidden = false;
+  saveFallback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// There is no way to hand an image straight to Instagram Stories from the web —
+// the instagram-stories:// scheme needs native app code. The share sheet is the
+// closest available: the user taps here, then taps Instagram in the sheet.
+async function saveCard() {
+  if (!lastCard) return;
+  saveBtn.disabled = true;
+  const originalLabel = saveBtn.textContent;
+  saveBtn.textContent = 'making your image...';
+
+  try {
+    const blob = await renderCardPNG(lastCard);
+    const file = new File([blob], 'cityblend.png', { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (err) {
+        // user dismissing the sheet is not an error worth reporting
+        if (err && err.name === 'AbortError') return;
+        showSaveFallback(blob);
+        return;
+      }
+    }
+
+    if (IS_IOS) {
+      // the download attribute is a no-op here, so go straight to press-and-hold
+      showSaveFallback(blob);
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cityblend.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    formStatus.hidden = false;
+    formStatus.textContent = "couldn't make the image — try again.";
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = originalLabel;
+  }
+}
+
+saveBtn.addEventListener('click', saveCard);
 
 updateCapUI();
