@@ -155,6 +155,18 @@ path (chronological): ${path.join(' -> ')}
 years per stop: ${yearsLine}
 </data>`;
 
+  const requestBody = {
+    model: MODEL,
+    max_tokens: 200,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userContent }],
+  };
+  // Newer models reject `temperature` outright ("deprecated for this model")
+  // rather than just ignoring it, so this can't be a fixed field on the body.
+  if (!process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_MODEL === 'claude-haiku-4-5-20251001') {
+    requestBody.temperature = 0.8;
+  }
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -162,13 +174,7 @@ years per stop: ${yearsLine}
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 200,
-      temperature: 0.8,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userContent }],
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!res.ok) {
