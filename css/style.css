@@ -308,9 +308,14 @@ body {
   margin-top: 16px;
 }
 
-.result-actions .form-status {
-  flex-basis: 100%;
-  margin-top: 2px;
+/* The rate-limit count belongs to regenerate, not to sharing, so it sits last
+   and quieter rather than interrupting the button and its own next-step hint. */
+.remaining-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 8px 0 0;
+  min-height: 1em;
 }
 
 /* The rendered PNG, shown in place of the DOM card so that press-and-hold and
