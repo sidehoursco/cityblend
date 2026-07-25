@@ -220,19 +220,23 @@ const CAN_SHARE_FILES = (() => {
   }
 })();
 
-// Posting is the point, so the guidance leads with it. Press-and-hold is a
-// fallback and stays out of the way unless the share sheet actually fails.
+// "share" sounds finished the moment it's tapped, so a hint telling you to do
+// something *more* reads as a contradiction. Two fixes: the arrow signals the
+// button opens something rather than concluding it, and the hint is descriptive
+// (where it can go) rather than imperative (what to do next), so the two stop
+// fighting. Platform-agnostic on purpose — the sheet shows a dozen apps, and
+// the spec never intended Instagram-only.
 const HINT_BEFORE = CAN_SHARE_FILES
-  ? 'then pick Instagram to add it to your story'
+  ? 'instagram, whatsapp, wherever'
   : 'or right-click the card to save it';
 const HINT_AFTER = CAN_SHARE_FILES
-  ? 'saved — now add it to your story on Instagram'
-  : 'saved — now open Instagram and add it to your story';
+  ? 'now add it to your story'
+  : 'saved — now add it to your story';
 const HINT_HOLD = IS_IOS
   ? 'press and hold the card, then choose Save to Photos'
   : 'right-click the card to save it';
 
-saveBtn.textContent = CAN_SHARE_FILES ? 'share my card' : 'download my card';
+saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →' : 'download my card';
 
 function resetImage() {
   if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
