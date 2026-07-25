@@ -11,13 +11,33 @@ const formStatus = document.getElementById('form-status');
 const submitBtn = document.getElementById('submit-btn');
 
 const resultSection = document.getElementById('result-section');
+const resultCard = document.getElementById('result-card');
 const resultHandle = document.getElementById('result-handle');
+const resultCount = document.getElementById('result-count');
 const resultIdentity = document.getElementById('result-identity');
 const resultLine = document.getElementById('result-line');
-const resultTimeline = document.getElementById('result-timeline');
-const resultPath = document.getElementById('result-path');
+const resultRoute = document.getElementById('result-route');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const remainingNote = document.getElementById('remaining-note');
+
+// Transit lines have colours; so does each person's route. Curated rather
+// than generated, so a hash can never land on a muddy or clashing hue.
+const LINE_COLORS = [
+  '#F2B33D', '#00A9B8', '#FF6B5B', '#9B85FF', '#4ECB71',
+  '#FF74B8', '#C9E265', '#6FB4FF', '#FF9233',
+];
+
+// Derived from the whole path, not the current city — in an expat network
+// current city converges (everyone lands in the same place) while the full
+// path diverges. Deterministic, so regenerating keeps the same colour.
+function lineColorFor(path) {
+  const key = path.join('|').toLowerCase();
+  let h = 0;
+  for (let i = 0; i < key.length; i++) {
+    h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return LINE_COLORS[h % LINE_COLORS.length];
+}
 
 let lastPayload = null;
 
@@ -69,18 +89,35 @@ function collectPayload() {
   return { handle, birthCity, currentCity, betweenCities };
 }
 
-function buildTimeline(container, pathLength) {
-  container.innerHTML = '';
-  for (let i = 0; i < pathLength; i++) {
-    if (i > 0) {
-      const line = document.createElement('div');
-      line.className = 'line';
-      container.appendChild(line);
+// One vertical route replaces the old dot-row-plus-text-list pair: the city
+// names sit on their own dots, which is self-explanatory, fits 8 stops down
+// the tall axis, and gives the optional years somewhere to live.
+function buildRoute(container, path, years) {
+  container.textContent = '';
+  path.forEach((cityName, i) => {
+    const isNow = i === path.length - 1;
+    const row = document.createElement('li');
+    if (isNow) row.className = 'is-now';
+
+    const city = document.createElement('span');
+    city.className = 'city';
+    city.textContent = cityName;
+    row.appendChild(city);
+
+    let metaText = '';
+    if (isNow) metaText = 'now';
+    else if (i === 0) metaText = 'origin';
+    const yrs = years && years[i];
+    if (yrs) metaText = metaText ? `${yrs} yrs · ${metaText}` : `${yrs} yrs`;
+
+    if (metaText) {
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = metaText;
+      row.appendChild(meta);
     }
-    const dot = document.createElement('div');
-    dot.className = i === pathLength - 1 ? 'dot dot-current' : 'dot';
-    container.appendChild(dot);
-  }
+    container.appendChild(row);
+  });
 }
 
 function setLoading(isLoading) {
@@ -115,8 +152,11 @@ async function generate(payload) {
     resultHandle.textContent = payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`;
     resultIdentity.textContent = data.identity;
     resultLine.textContent = data.line;
-    resultPath.textContent = data.path.join(' → ');
-    buildTimeline(resultTimeline, data.path.length);
+    resultCount.textContent = data.path.length;
+    buildRoute(resultRoute, data.path, data.years);
+    // spacing compresses off --n; the line colour is the person's own
+    resultCard.style.setProperty('--n', data.path.length);
+    resultCard.style.setProperty('--line', lineColorFor(data.path));
     remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;

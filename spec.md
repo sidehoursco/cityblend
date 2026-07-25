@@ -26,16 +26,37 @@ Distribution: not Instagram-exclusive. Optimized for Instagram/WhatsApp Stories 
 - Handle, top, small/muted
 - Identity name (e.g. "the moscelonian") — AI-generated portmanteau, large
 - One dry line of commentary — AI-generated, single consistent deadpan voice (calibrated to the input, not hyped up for impressive paths or mocking for boring ones — the "barely qualifies, moved 30km" test case is the tonal north star)
-- Visual timeline: dots connected by a line in chronological (not geographic) order. Last dot (current city) larger/different color = "home now."
+- Visual timeline: a **vertical route**, dots connected by a line in chronological (not geographic) order, with each city named beside its own dot. Last dot (current city) larger/filled = "home now."
   - Chronological, not geography-accurate — real relative positions require an actual map backdrop to read correctly and would fight the narrative. Shelved as a stretch goal, not v1.
   - Single-city case (never moved): one dot, no line. Chosen line: "one hometown, zero passport stamps."
+  - **Superseded (week 3):** originally specced as a horizontal dot row *plus* a separate text list of the same cities underneath. These were merged into one vertical route — the names sit on the dots, so the graphic is self-explanatory, eight stops fit down the long axis of a 9:16 frame (which horizontal never did), and the optional per-stop years finally have somewhere to live.
+- Stop-count badge, top right: the number of cities, large, in the route's colour. Not decoration — a visible comparable number turns a personal card into a scoreboard ("ha, I have four"), which is a reason to make your own. Uses "stops" because it's the one count honestly derivable from what someone typed (see the note on country counts under Cost & abuse protection).
 - General prompt-writing rule: favor a concrete, specific, countable detail ("moved 30km" — the specificity is the joke) over a closing cliché like "no notes" / "no regrets," which reads as filler, not observation.
-- Text list of the full path underneath the graphic (the "receipt" — visual alone doesn't reliably convey unusual city names, especially at 6-8 stops)
 - Footer, baked into the image itself: "and you? → cityblend.app"
   - Hook + destination combined — "and you?" invites the viewer to participate, the domain tells them where. Must be literal text on the image, not a clickable element — once downloaded/screenshotted to a story it's a flat image, no live links.
   - Longer explainer phrases (e.g. "what's your geographical identity") belong on the site's headline, not the card footer — footer needs to stay short.
-- Export: 9:16 image, downloadable
+- Export: 9:16 image, downloadable, **full-bleed** (the image fills the whole story frame rather than floating as a card on a plain background — reads as intentional and designed rather than as a screenshot of a website)
   - Visual polish (typography, color, spacing) is pure front-end rendering — zero API cost either way. "Pretty" and "cheap" aren't in tension here.
+  - **Square export deliberately skipped for v1.** A format picker puts a decision in front of someone at the highest-intent moment they'll ever have (the second they want to share), and it isn't a cheap resize — the vertical route is designed for the tall axis, so a square is a genuine second layout. Instead, keep the name, line and badge inside the centre square so a crop or grid repost still carries the hook. Revisit only if real requests come in.
+
+## Card design — "Night Line" (decided week 3)
+
+Chosen over two alternatives (a passport/travel-document treatment, and a loud flat-colour poster). Rationale: it's the only direction that isn't already a known internet format, so it can read as a new thing rather than a Spotify Wrapped variant, and the form has a reason to look the way it does.
+
+- **Concept:** a transit line at night. This is the *universal* grammar of metro diagrams (coloured line, dots as stops, sequence over geography) shared by Tokyo, Moscow, Paris, Istanbul and Barcelona — deliberately **not** London's identity. Practical checks: use Helvetica-family type (the international/NYC-subway convention, not London's Johnston), and avoid the roundel, which is a Transport for London trademark. Chosen partly because metro diagrams are globally legible without a legend, which suits an app about people who've lived in several countries.
+- **Ground:** near-black, constant on every card. This is the house identity.
+- **Line colour varies per person**, from a hash of the *whole path* — not the current city. Deriving it from the current city collapses in a Barcelona expat network, where current city is the field everyone shares; the full path is the field that actually diverges. Colour comes from a curated set of nine (not free-generated), so a hash can never produce a muddy or clashing result. Because the hash is of the path, the colour is stable across regenerations — the card stays "theirs" rather than looking like a reroll.
+- **Hierarchy**, in order: identity name (biggest, bold — the hook and punchline), the dry line (near-white, medium weight, clearly second), stop badge, the route, then handle and footer deliberately quiet. Nothing on the card is thin.
+- **Labels:** "origin" on the first stop (transit vocabulary — origin/destination — and it fits the card's language better than "born"), "now" on the last.
+- **Dark, not light:** once a story is open the full-bleed card *is* the screen, so the app's own theme barely matters; where it does matter — thumbnails in a feed or DM — a dark card stands out more against a light-mode background. Also just punchier and more memorable.
+
+### Layout constraints (verified, not assumed)
+
+- **Instagram Stories safe area:** the top ~13% and bottom ~18-20% of the frame sit under platform UI (username/progress bar; reply bar). All content must stay inside that band. Verified by measurement across 2–8 stops with short, long, and non-Latin city names — worst case bottoms out at ~79.5% of card height.
+- **Spacing compresses as stop count rises**, driven off the number of stops. Fixed type sizes with a variable-length route overflow the frame.
+- **Use only `cqw` container units, never `cqh`.** With `container-type: inline-size`, block-axis container units do not resolve against the container — they silently measure against the viewport, which is exactly what broke the first build. Since 9:16 is locked, `1cqh == 1.7778cqw`, so `cqw` alone is sufficient.
+- **Set explicit `line-height` on route rows.** CJK, Arabic and similar scripts inflate the default line box enough to blow the vertical budget.
+- **City names must survive as entered** — accented (san sebastián, reykjavík) and non-Latin (Москва, 東京, القاهرة, 서울) all need to render correctly in the exported image, since the audience is international by definition.
 
 ## Tone / voice
 
@@ -99,9 +120,22 @@ From this log, also track: distribution of path length (validates whether the 8-
 ## Open items still to decide / build
 
 - Buy domain (cityblend.app)
-- Write and test the actual generation prompt against the known test cases until the voice is consistently landing
 - Confirm current free-tier limits on GoatCounter / Vercel Analytics at setup
-- Decide exact fallback for the text path once someone hits the 8-city cap (full list still fits at 8, so likely a non-issue — confirm during build)
+- Render the card to a real 1080×1920 PNG for download — the fiddliest remaining piece (browser text-to-canvas rendering, plus iOS Safari's own quirks around triggering downloads)
+- Redo the input form and page flow mobile-first — most visitors arrive from Instagram on a phone, and the form has had no mobile-specific design pass at all
+- Expand the content blocklist beyond the current starter list before real traffic
+
+**Resolved**
+
+- ~~Decide exact fallback for the text path once someone hits the 8-city cap~~ — no fallback needed. The vertical route fits 8 stops with room to spare; verified by measurement, not assumption.
+- ~~Write and test the generation prompt against the known test cases~~ — done for the initial pass, though voice tuning is inherently ongoing rather than a state you finish. Fixed along the way: identity names that were just two city names glued together rather than demonyms; invented geographic facts (wrong compass directions, wrong continent counts); paraphrasing a given city as "a small italian town"; and soft closing clichés ("decided that was the final answer") which are the same filler as "no notes" reworded. Key lesson: **positive worked examples beat prohibition lists** — banning phrases just produced new equivalents, while adding few-shot examples across path lengths actually moved the output.
+
+## Later / v2 (not v1 scope)
+
+- **Comparative stat on the card badge** — e.g. "more moves than 78% of people" instead of a raw stop count. Strictly better as a brag, and it upgrades the same slot rather than needing a redesign. Blocked on having the aggregate content log, so it can't happen before the log exists.
+- Public gallery of individual cards, with explicit opt-in consent at submission (see Site structure).
+- Square/1:1 export, only if requests actually arrive.
+- Geography-accurate map view, which needs a real map backdrop to read correctly.
 
 ## Timeline (2-4 hrs/week)
 

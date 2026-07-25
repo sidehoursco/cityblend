@@ -217,6 +217,9 @@ module.exports = async function handler(req, res) {
       identity: blend.identity,
       line: blend.line,
       path: validation.data.path,
+      // returned so the card can annotate stops; sent from the server rather
+      // than reused client-side because the server truncates and filters.
+      years: validation.data.years,
       remaining: limits.remaining,
       limit: HOURLY_LIMIT,
     });
