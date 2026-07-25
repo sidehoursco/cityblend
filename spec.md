@@ -58,6 +58,20 @@ Chosen over two alternatives (a passport/travel-document treatment, and a loud f
 - **Set explicit `line-height` on route rows.** CJK, Arabic and similar scripts inflate the default line box enough to blow the vertical budget.
 - **City names must survive as entered** — accented (san sebastián, reykjavík) and non-Latin (Москва, 東京, القاهرة, 서울) all need to render correctly in the exported image, since the audience is international by definition.
 
+### Aspect ratio: 9:16 is the asset spec, not the screen
+
+The card is 9:16 (1080×1920) because that is Instagram's documented Stories asset size. Modern phones are **taller** than that — an iPhone 16 Pro is roughly 19.5:9 — so the card will look slightly "more square" than the phone screen it's viewed on. That's expected, and the on-page preview deliberately matches the *exported image*, not the device.
+
+Open question, only answerable empirically: on a taller-than-9:16 screen Instagram either letterboxes the image or scales it to fill and crops. Sources disagree and none are authoritative. This matters because if it letterboxes, the current safe-area padding is over-conservative and wastes space. The current padding errs on the cautious side, which can only ever be too careful rather than too little — so it's a safe default until someone actually posts a real exported card to a real story and looks.
+
+### Export & download (platform constraints, researched)
+
+- **`download` on an anchor is not supported in iOS Safari.** Critically, this also affects **Chrome on iPhone**, because Apple requires all iOS browsers to use WebKit — Chrome on iOS is not immune. Chrome on Android and desktop behave normally. Chrome is fully in scope; it just isn't a separate problem except on iOS, where it's the same problem.
+- **Preferred path on mobile: the Web Share API** (`navigator.share` with a `files` array from `canvas.toBlob()`), which opens the native share sheet — better UX for "post this to a story" than a download anyway. Fall back to `<a download>` on desktop.
+- **Don't rely on Web Share alone.** It has a documented history of iOS bugs: a once-per-session permission error on iOS 14, and on iOS 16 the sheet offering only "Save to Files" rather than "Save to Photos" — which is a real problem, because an image has to be in Photos to be posted to a story.
+- **Therefore always render the finished image visibly on the page.** Long-press → "Save to Photos" is the one path that reliably works on iOS regardless of API support, so it should exist as a fallback for everyone, with clear wording telling people they can do it.
+- Needs testing on real devices, not emulation.
+
 ## Tone / voice
 
 Single consistent voice for all outputs. No tone switch/toggle in v1.
