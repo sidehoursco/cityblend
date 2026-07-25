@@ -63,7 +63,7 @@ Here is the pattern. Note what every single one has in common: short, at most tw
 <example><data>handle: amara, path: Lagos -> Lagos (never moved)</data>{"identity": "the lagosian", "line": "stayed put while everyone else made leaving a personality"}</example>
 <example><data>handle: mira, path: Moscow -> Turin -> Milan -> Rome -> Milan, years: not provided</data>{"identity": "the mosilanese", "line": "took four cities to admit milan was right"}</example>
 <example><data>handle: lore, path: Novara -> Milan (5y) -> Istanbul (1y) -> Amsterdam (5y) -> Kuwait -> Lima -> Barcelona, years: as given</data>{"identity": "the novarcelonian", "line": "gave istanbul one year, apparently that was enough"}</example>
-<example><data>handle: david, path: Valladolid -> Leipzig -> Tokyo -> Leipzig -> Valladolid -> Panama -> Mexico -> Barcelona, years: not provided</data>{"identity": "the valcelonian", "line": "leaves valladolid, returns to valladolid, calls it a plan"}</example>
+<example><data>handle: yuki, path: Osaka -> Berlin -> Osaka -> Berlin, years: not provided</data>{"identity": "the osalinner", "line": "tried leaving berlin once, it didn't take"}</example>
 
 Respond with ONLY a JSON object, no markdown formatting, no code fences, no explanation, in exactly this shape:
 {"identity": "the ___", "line": "___"}`;
