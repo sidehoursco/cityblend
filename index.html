@@ -48,16 +48,20 @@
           <input type="text" id="birth-city" name="birthCity" maxlength="40" placeholder="where it started" required>
         </div>
 
-        <div class="field" id="between-cities-field">
-          <label>cities lived in between <span class="hint">(optional, chronological)</span></label>
-          <div id="between-cities-list"></div>
-          <button type="button" id="add-city-btn" class="secondary-btn">+ add a city</button>
-          <p class="cap-note" id="cap-note"></p>
-        </div>
-
         <div class="field">
           <label for="current-city">city you live in now</label>
           <input type="text" id="current-city" name="currentCity" maxlength="40" placeholder="where you are" required>
+        </div>
+
+        <!-- Deliberately last: the two required fields above are the whole
+             form for most people, and this section used to sit between them —
+             watched a real user hesitate over it before reaching "current
+             city", the field they actually needed next. -->
+        <div class="field" id="between-cities-field">
+          <label><span class="hint">optional —</span> any stops in between, chronological order</label>
+          <div id="between-cities-list"></div>
+          <button type="button" id="add-city-btn" class="secondary-btn">+ add a stop</button>
+          <p class="cap-note" id="cap-note"></p>
         </div>
 
         <button type="submit" id="submit-btn">generate my blend</button>

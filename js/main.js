@@ -292,7 +292,7 @@ async function saveCard() {
       return;
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = CAN_SHARE_FILES ? 'share my card' : 'download my card';
+      saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →' : 'download my card';
     }
   }
 

@@ -1,11 +1,19 @@
+/* Tokens deliberately pulled from the card's own palette (js/card-image.js,
+   .card in this file) rather than kept as a separate week-1 theme, so the
+   page and the card read as one product instead of a shell with a designed
+   object bolted onto it. --ink matches the card's ground colour; --accent
+   is the same near-black, used for primary buttons instead of a generic
+   green, since the card has no single accent of its own to borrow (its line
+   colour is per-person). */
 :root {
-  --ink: #1a1a1a;
-  --muted: #6b6b6b;
-  --bg: #faf9f7;
+  --ink: #14161A;
+  --muted: #6B7078;
+  --bg: #F5F4F0;
   --card-bg: #ffffff;
-  --accent: #2a5b4c;
-  --accent-light: #dce8e3;
-  --border: #e4e1db;
+  --accent: #14161A;
+  --accent-contrast: #ffffff;
+  --accent-light: #E4E5E0;
+  --border: #E1E0DA;
 }
 
 * {
@@ -14,9 +22,10 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 .page {
@@ -32,7 +41,9 @@ body {
 
 .hero h1 {
   font-size: 1.9rem;
-  line-height: 1.25;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
   margin: 0 0 12px;
 }
 
@@ -262,11 +273,13 @@ body {
 #submit-btn,
 #save-btn {
   background: var(--accent);
-  color: white;
+  color: var(--accent-contrast);
   border: none;
   border-radius: 999px;
   padding: 14px 32px;
   font-size: 1rem;
+  font-weight: 600;
+  min-height: 48px;
   cursor: pointer;
 }
 
@@ -291,6 +304,8 @@ body {
   border-radius: 999px;
   padding: 13px 24px;
   font-size: 0.95rem;
+  font-weight: 600;
+  min-height: 48px;
   color: var(--accent);
   cursor: pointer;
 }
@@ -352,29 +367,47 @@ body {
 }
 
 .field {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
+/* Uppercase, letter-spaced, muted: echoes the card's own micro-labels
+   (ORIGIN / NOW / STOPS) rather than the generic bold-label convention the
+   form used before the card existed — a small, deliberate tie between the
+   two rather than two unrelated type systems on one page. */
 label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
 }
 
 .hint {
   font-weight: 400;
-  color: var(--muted);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
+/* min-height 48px meets the ~44-48px touch-target guidance (Apple HIG /
+   Material); 16px font-size is also load-bearing — anything smaller triggers
+   iOS Safari's auto-zoom on focus. */
 input[type="text"],
 input[type="number"] {
   width: 100%;
-  padding: 10px 12px;
+  min-height: 48px;
+  padding: 12px 14px;
   font-size: 1rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .between-city-row {
@@ -396,8 +429,9 @@ input[type="number"] {
   flex-shrink: 0;
   background: none;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  width: 40px;
+  border-radius: 10px;
+  width: 48px;
+  min-height: 48px;
   font-size: 1.1rem;
   color: var(--muted);
   cursor: pointer;
@@ -406,9 +440,11 @@ input[type="number"] {
 .secondary-btn {
   background: none;
   border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-height: 44px;
   font-size: 0.9rem;
+  font-weight: 600;
   color: var(--accent);
   cursor: pointer;
   width: 100%;
