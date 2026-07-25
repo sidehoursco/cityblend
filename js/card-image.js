@@ -65,20 +65,65 @@ function metaFor(index, lastIndex, years) {
   return label.toUpperCase();
 }
 
+/* Sizes/gaps below `over` (identity, line, route). Original formulas only
+ * compressed for stop COUNT — a 2-line identity or a wrapped line-of-text
+ * eats real height that nothing accounted for, and the footer was drawn at
+ * a fixed y regardless, so long content could overlap it (found via real
+ * testing: identical stop counts overlapped or not purely based on whether
+ * the identity happened to wrap to 1 or 2 lines). Clamped with Math.max so
+ * a large `over` (from the fit loop below) can't push a gap negative. */
+function metricsFor(over, u) {
+  return {
+    over,
+    topGap: Math.max(2, 6.5 - over * 0.5) * u,
+    identSize: Math.max(6, 11.5 - over * 0.28) * u,
+    identGap: Math.max(1.5, 5 - over * 0.3) * u,
+    lineSize: Math.max(3, 4.7 - over * 0.1) * u,
+    lineGap: Math.max(2, 7 - over * 0.8) * u,
+    citySize: Math.max(3, 4.5 - over * 0.12) * u,
+    rowGap: Math.max(1.2, 5 - over * 0.45) * u,
+  };
+}
+
 /* data: { handle, identity, line, path, years, color } */
 function drawCard(ctx, data) {
   const u = CARD_W / 100;
   const n = data.path.length;
-  const over = Math.max(0, n - 2);
+  const baseOver = Math.max(0, n - 2);
 
   const padX = 8 * u;
   const padTop = 25.8 * u;
   const contentBottom = CARD_H - 36.5 * u;
   const innerW = CARD_W - padX * 2;
+  const footerSize = 3 * u;
+  const minGapAboveFooter = 3 * u;
+
+  ctx.textBaseline = 'alphabetic';
+
+  // Find the smallest extra compression (beyond stop-count alone) that
+  // makes the identity + line + route actually fit above the footer, given
+  // their real wrapped line counts at each candidate size.
+  let over = baseOver;
+  let m, identLines, lineRows, routeBottomY;
+  for (let step = 0; step <= 40; step += 1) {
+    m = metricsFor(over, u);
+    ctx.font = `700 ${m.identSize}px ${FONT_SANS}`;
+    identLines = wrapLines(ctx, data.identity, innerW);
+    ctx.font = `500 ${m.lineSize}px ${FONT_SANS}`;
+    // mirrors max-width: 27ch in the stylesheet, at this size's own char width
+    const lineMaxW = Math.min(innerW, ctx.measureText('0').width * 27);
+    lineRows = wrapLines(ctx, data.line, lineMaxW);
+    const rowH = m.citySize * 1.15;
+    let y = padTop + (17 * u) + m.topGap;
+    y += identLines.length * m.identSize * 0.92 + m.identGap;
+    y += lineRows.length * m.lineSize * 1.3 + m.lineGap;
+    routeBottomY = y + (n - 1) * (rowH + m.rowGap) + rowH;
+    if (routeBottomY + minGapAboveFooter <= contentBottom - footerSize * 0.8) break;
+    over += 1;
+  }
 
   ctx.fillStyle = INK;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
-  ctx.textBaseline = 'alphabetic';
 
   let y = padTop;
 
@@ -110,36 +155,29 @@ function drawCard(ctx, data) {
   ctx.fillText('STOPS', badgeCX, badgeCY + 5.1 * u);
   ctx.textAlign = 'left';
 
-  y += badgeD + (6.5 - over * 0.5) * u;
+  y += badgeD + m.topGap;
 
   /* ---- identity ---- */
-  const identSize = (11.5 - over * 0.28) * u;
-  ctx.font = `700 ${identSize}px ${FONT_SANS}`;
+  ctx.font = `700 ${m.identSize}px ${FONT_SANS}`;
   ctx.fillStyle = TEXT;
-  const identLines = wrapLines(ctx, data.identity, innerW);
   identLines.forEach((line, i) => {
-    ctx.fillText(line, padX, y + identSize * 0.8 + i * identSize * 0.92);
+    ctx.fillText(line, padX, y + m.identSize * 0.8 + i * m.identSize * 0.92);
   });
-  y += identLines.length * identSize * 0.92 + (5 - over * 0.3) * u;
+  y += identLines.length * m.identSize * 0.92 + m.identGap;
 
   /* ---- the dry line ---- */
-  const lineSize = (4.7 - over * 0.1) * u;
-  ctx.font = `500 ${lineSize}px ${FONT_SANS}`;
+  ctx.font = `500 ${m.lineSize}px ${FONT_SANS}`;
   ctx.fillStyle = TEXT_SOFT;
-  // mirrors max-width: 27ch in the stylesheet
-  const chW = ctx.measureText('0').width;
-  const lineMaxW = Math.min(innerW, chW * 27);
-  const lineRows = wrapLines(ctx, data.line, lineMaxW);
   lineRows.forEach((row, i) => {
-    ctx.fillText(row, padX, y + lineSize * 0.8 + i * lineSize * 1.3);
+    ctx.fillText(row, padX, y + m.lineSize * 0.8 + i * m.lineSize * 1.3);
   });
-  y += lineRows.length * lineSize * 1.3 + (7 - over * 0.8) * u;
+  y += lineRows.length * m.lineSize * 1.3 + m.lineGap;
 
   /* ---- the route ---- */
-  const citySize = (4.5 - over * 0.12) * u;
+  const citySize = m.citySize;
   const metaSize = 2.6 * u;
   const rowH = citySize * 1.15;
-  const rowGap = (5 - over * 0.45) * u;
+  const rowGap = m.rowGap;
   const dotX = padX + 2.65 * u;
   const textX = padX + 7.6 * u;
 

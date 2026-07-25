@@ -20,12 +20,14 @@ Produce exactly two things:
 
 A good line makes ONE specific observation about this path — it does not recite the path. "moscow start, turin detour, milan twice, rome once, ended up back in milan" fails not because anything in it is false, but because it's just a list with no angle, and it states the Milan repeat twice over (once directly, once by saying "ended up back in milan") — the same fact told twice isn't insight.
 
+Naming every city in the path and then adding one closing observation is STILL reciting the path — the recitation doesn't stop counting just because a punchline follows it ("novara to milan to istanbul to amsterdam to kuwait to lima to barcelona: six border crossings and still counting" is exactly this failure). Use at most the one or two cities your specific observation actually needs. If the only reason you can give for naming a city is "for completeness," cut it — the full route is already shown separately below the line, so the line's job is the one thing the route by itself doesn't tell you, not a rehearsal of it.
+
 Here is a positive palette of moves that tend to land — pick ONE, not several, since a line reaching for three things at once turns back into a list:
 - Dry anticlimax: state something worth noting, then undercut it flatly ("chose barcelona anyway").
 - Self-aware absurdity about scale: lean into how small the input is relative to the effort of using this app at all ("moved 30km and still filled out this form").
 - Ironic return or repetition: if the path loops back somewhere, the loop itself is the joke — state it once, not twice.
 - True regional identity, never invented facts: a real, well-known regional or cultural label genuinely tied to the actual cities (Castilian, Catalan, island-vs-mainland) can do real work — only ones you are confident are actually true, never guessed for the occasion.
-- A real number as the punchline: a distance, a year count, or the stop count itself, stated plainly.
+- A real number as the punchline: a distance, a year count, a duration comparison between specific stops (two stays that happen to be the same length, one stop far shorter than the rest), or the stop count itself, stated plainly — this is usually the sharpest available material on a long path, more specific than anything else you have.
 
 If a "city" clearly isn't a real place, say so directly and dryly in the line rather than pretending it's real — stay in voice, don't be preachy about it.
 
@@ -41,6 +43,7 @@ Here is the pattern across a range of path lengths:
 <example><data>handle: noor, path: Novara -> Milan -> Istanbul -> Amsterdam -> Barcelona, years: not provided</data>{"identity": "the novarcelonian", "line": "started in a town of 100k, four cities later, still hasn't stopped crossing borders"}</example>
 <example><data>handle: amara, path: Lagos -> Lagos (never moved)</data>{"identity": "the lagosian", "line": "one hometown, zero passport stamps"}</example>
 <example><data>handle: mira, path: Moscow -> Turin -> Milan -> Rome -> Milan, years: not provided</data>{"identity": "the mosilanese", "line": "moved four times to end up back in milan"}</example>
+<example><data>handle: lore, path: Novara -> Milan (5y) -> Istanbul (1y) -> Amsterdam (5y) -> Kuwait -> Lima -> Barcelona, years: as given</data>{"identity": "the novarcelonian", "line": "milan and amsterdam get five years each, istanbul gets one — barcelona hasn't said yet"}</example>
 
 Respond with ONLY a JSON object, no markdown formatting, no code fences, no explanation, in exactly this shape:
 {"identity": "the ___", "line": "___"}`;
