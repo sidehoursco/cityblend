@@ -20,11 +20,17 @@ const resultRoute = document.getElementById('result-route');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const remainingNote = document.getElementById('remaining-note');
 const saveBtn = document.getElementById('save-btn');
-const saveFallback = document.getElementById('save-fallback');
-const saveFallbackImg = document.getElementById('save-fallback__img');
+const resultImage = document.getElementById('result-image');
+const saveHint = document.getElementById('save-hint');
 
 // Everything the exported PNG needs, kept from the last successful generation.
 let lastCard = null;
+// The PNG is rendered as soon as a card exists, not on button press. Two
+// reasons: navigator.share() needs transient user activation, which an await
+// inside the click handler can burn; and having a real <img> on the page is
+// what makes press-and-hold / right-click save an actual image.
+let lastFile = null;
+let lastImageUrl = null;
 
 // Every browser on iOS runs WebKit — Apple requires it — so Chrome on an
 // iPhone inherits Safari's broken `download` attribute. Detect the platform,
@@ -170,9 +176,7 @@ async function generate(payload) {
       color: lineColorFor(data.path),
     };
     // a fresh generation invalidates any previously rendered image
-    saveFallback.hidden = true;
-    if (saveFallbackImg.src.startsWith('blob:')) URL.revokeObjectURL(saveFallbackImg.src);
-    saveFallbackImg.removeAttribute('src');
+    resetImage();
 
     resultHandle.textContent = payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`;
     resultIdentity.textContent = data.identity;
@@ -186,6 +190,7 @@ async function generate(payload) {
 
     resultSection.hidden = false;
     resultSection.scrollIntoView({ behavior: 'smooth' });
+    prepareImage();
   } catch (err) {
     formStatus.hidden = false;
     formStatus.textContent = 'network error, try again.';
@@ -203,11 +208,39 @@ regenerateBtn.addEventListener('click', () => {
   if (lastPayload) generate(lastPayload);
 });
 
-function showSaveFallback(blob) {
-  if (saveFallbackImg.src.startsWith('blob:')) URL.revokeObjectURL(saveFallbackImg.src);
-  saveFallbackImg.src = URL.createObjectURL(blob);
-  saveFallback.hidden = false;
-  saveFallback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+const HOLD_HINT = IS_IOS
+  ? 'or press and hold the card, then choose Save to Photos'
+  : 'or right-click the card to save it';
+
+function resetImage() {
+  if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
+  lastImageUrl = null;
+  lastFile = null;
+  resultImage.hidden = true;
+  resultImage.removeAttribute('src');
+  resultCard.hidden = false;
+  saveHint.hidden = true;
+}
+
+// Renders the PNG up front and swaps it in for the DOM card, so what's on
+// screen is literally the file that gets saved.
+async function prepareImage() {
+  if (!lastCard) return;
+  try {
+    const blob = await renderCardPNG(lastCard);
+    lastFile = new File([blob], 'cityblend.png', { type: 'image/png' });
+    lastImageUrl = URL.createObjectURL(blob);
+    resultImage.addEventListener('load', () => {
+      resultImage.hidden = false;
+      resultCard.hidden = true;
+      saveHint.textContent = HOLD_HINT;
+      saveHint.hidden = false;
+    }, { once: true });
+    resultImage.src = lastImageUrl;
+  } catch (err) {
+    // the DOM card stays visible; the save button will retry the render
+    lastFile = null;
+  }
 }
 
 // There is no way to hand an image straight to Instagram Stories from the web —
@@ -215,47 +248,56 @@ function showSaveFallback(blob) {
 // closest available: the user taps here, then taps Instagram in the sheet.
 async function saveCard() {
   if (!lastCard) return;
-  saveBtn.disabled = true;
-  const originalLabel = saveBtn.textContent;
-  saveBtn.textContent = 'making your image...';
 
-  try {
-    const blob = await renderCardPNG(lastCard);
-    const file = new File([blob], 'cityblend.png', { type: 'image/png' });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        return;
-      } catch (err) {
-        // user dismissing the sheet is not an error worth reporting
-        if (err && err.name === 'AbortError') return;
-        showSaveFallback(blob);
-        return;
-      }
-    }
-
-    if (IS_IOS) {
-      // the download attribute is a no-op here, so go straight to press-and-hold
-      showSaveFallback(blob);
+  let file = lastFile;
+  if (!file) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'making your image...';
+    try {
+      const blob = await renderCardPNG(lastCard);
+      file = new File([blob], 'cityblend.png', { type: 'image/png' });
+      lastFile = file;
+      if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
+      lastImageUrl = URL.createObjectURL(blob);
+    } catch (err) {
+      formStatus.hidden = false;
+      formStatus.textContent = "couldn't make the image — try again.";
       return;
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'save my card';
     }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cityblend.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch (err) {
-    formStatus.hidden = false;
-    formStatus.textContent = "couldn't make the image — try again.";
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = originalLabel;
   }
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      nudgeToInstagram();
+      return;
+    } catch (err) {
+      // dismissing the sheet isn't a failure; anything else falls through to
+      // the visible image, which is always saveable by long-press
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+
+  const a = document.createElement('a');
+  a.href = lastImageUrl;
+  a.download = 'cityblend.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // NOT revoked here: revoking synchronously after click cancels the download.
+  // The URL is released on the next generation instead.
+  nudgeToInstagram();
+}
+
+// Saving is not the goal — posting is. Without this people save the image and
+// stop, because nothing told them there was a next step.
+function nudgeToInstagram() {
+  saveHint.textContent = 'saved. now open Instagram and add it to your story →';
+  saveHint.classList.add('save-hint--done');
+  saveHint.hidden = false;
 }
 
 saveBtn.addEventListener('click', saveCard);

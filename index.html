@@ -78,18 +78,18 @@
           <span class="c-foot">and you? → cityblend.app</span>
         </div>
       </div>
+      <!-- Once the PNG exists it replaces the DOM card above, so that pressing
+           and holding (or right-clicking) the card yields a real image rather
+           than a chunk of HTML. -->
+      <img id="result-image" class="card-image" alt="your cityblend card" hidden>
+
       <div class="result-actions">
         <button type="button" id="save-btn">save my card</button>
         <button type="button" id="regenerate-btn">regenerate</button>
         <p class="form-status" id="remaining-note"></p>
       </div>
 
-      <!-- Revealed only when neither the share sheet nor a download works,
-           which is the iOS case: press-and-hold is the one reliable path there. -->
-      <div id="save-fallback" class="save-fallback" hidden>
-        <p class="save-fallback__hint">press and hold the image, then choose <strong>Save to Photos</strong></p>
-        <img id="save-fallback__img" alt="your cityblend card, ready to save">
-      </div>
+      <p class="save-hint" id="save-hint" hidden></p>
     </section>
 
     <footer class="site-footer">

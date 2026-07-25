@@ -313,24 +313,31 @@ body {
   margin-top: 2px;
 }
 
-.save-fallback {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.save-fallback__hint {
-  font-size: 0.9rem;
-  color: var(--muted);
-  margin: 0 0 10px;
-}
-
-.save-fallback img {
-  width: 100%;
-  max-width: 260px;
-  height: auto;
-  border-radius: 12px;
+/* The rendered PNG, shown in place of the DOM card so that press-and-hold and
+   right-click save a real image. Same box as .card so nothing shifts. */
+.card-image {
   display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  /* matches 4cqw on .card at its ~335px rendered width */
+  border-radius: 13px;
   margin-inline: auto;
+}
+
+.card-image[hidden] { display: none; }
+
+.save-hint {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+.save-hint--done {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .form-section {
