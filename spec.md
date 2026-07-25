@@ -146,16 +146,27 @@ From this log, also track: distribution of path length (validates whether the 8-
 
 ## Open items still to decide / build
 
-- Buy domain (cityblend.app)
+- Buy domain (cityblend.app) — see note below, this is more time-pressured than it looks
 - Confirm current free-tier limits on GoatCounter / Vercel Analytics at setup
-- Render the card to a real 1080×1920 PNG for download — the fiddliest remaining piece (browser text-to-canvas rendering, plus iOS Safari's own quirks around triggering downloads)
-- Redo the input form and page flow mobile-first — most visitors arrive from Instagram on a phone, and the form has had no mobile-specific design pass at all
 - Expand the content blocklist beyond the current starter list before real traffic
+- Decide the homepage's example-card strategy — currently one hardcoded card (Sofia/moscelonian) shown to every visitor; candidate fix is rotating between a handful of hand-curated good examples instead
+- Finish the page-level visual design (see "Form/page design" below) — the functional mobile pass (field order, touch targets) is done, but the page's own visual craft (background relationship to the card, input styling, borders) is not
+
+**Launch checklist**
+
+- `HOURLY_LIMIT` is currently set to 30 in Vercel (Production+Preview) for pre-launch testing — the real limit in code defaults to 3. **Must revert (delete the env var, or set it to 3) before any public launch/seeding.**
+- The card footer bakes in "cityblend.app" as literal text on every generated image, but the domain isn't purchased/pointed yet. Anyone who already saved a real test card (several friends have) has a footer promising a URL that doesn't resolve. Buy and point the domain before more real people receive cards, not just before "launch."
 
 **Resolved**
 
 - ~~Decide exact fallback for the text path once someone hits the 8-city cap~~ — no fallback needed. The vertical route fits 8 stops with room to spare; verified by measurement, not assumption.
-- ~~Write and test the generation prompt against the known test cases~~ — done for the initial pass, though voice tuning is inherently ongoing rather than a state you finish. Fixed along the way: identity names that were just two city names glued together rather than demonyms; invented geographic facts (wrong compass directions, wrong continent counts); paraphrasing a given city as "a small italian town"; and soft closing clichés ("decided that was the final answer") which are the same filler as "no notes" reworded. Key lesson: **positive worked examples beat prohibition lists** — banning phrases just produced new equivalents, while adding few-shot examples across path lengths actually moved the output.
+- ~~Render the card to a real 1080×1920 PNG for download~~ — done: hand-drawn canvas render, adaptive share/download button, iOS press-and-hold fallback. Verified on a real device.
+- ~~Redo the input form mobile-first~~ — partially done. Field order fixed (birth/current city adjacent, optional stops last — found by watching a real user hesitate over the old order), touch targets brought to 44-48px, page unified with the card's typeface/accent. Not done: the page's background still isn't fully resolved against the card (see below), and several field labels/styles need another pass.
+- ~~Write and test the generation prompt against the known test cases~~ — ongoing rather than a state you finish; each round of real testing has found a new failure category:
+  - Round 1: identity names that were just two city names glued together rather than demonyms; invented geographic facts (wrong compass directions, wrong continent counts); paraphrasing a given city as "a small italian town"; soft closing clichés ("decided that was the final answer") — same filler as "no notes" reworded.
+  - Round 2 (real friend-data testing): invented climate claims ("picked the warmest option" — false, Barcelona isn't warmer than Cyprus/Athens); invented language/script claims ("each move a different alphabet" — false, all Latin script); identity silently skipping the blend and using one city's plain demonym; lines that recite the path instead of making one observation about it (stating the same fact twice — "milan twice... back in milan").
+  - Key lesson, reconfirmed each round: **positive worked examples beat prohibition lists.** Banning a specific phrase just produces a new equivalent; naming the general principle and adding a few-shot example of the failure case actually moves the output. The fact-invention ban specifically needed to be the *principle* ("don't assert real-world facts about the cities you don't reliably know") rather than a list of categories — climate and language were both missed the first time because only direction/distance/continent-count were named.
+  - Not a bug, by design: the identity typically blends only 2 cities (usually birth + current) even on long paths — matches the spec's own canonical example ("the moscelonian" drops London). The route below already lists every stop; the identity's job is an evocative nickname, not a manifest.
 
 ## Later / v2 (not v1 scope)
 

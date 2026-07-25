@@ -410,6 +410,39 @@ input[type="number"]:focus {
   outline-offset: 1px;
 }
 
+/* The "@" is part of this box, not the input's typed value — border and
+   background live here; the input inside is a bare text field. */
+.input-prefix {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  padding-left: 14px;
+}
+
+.input-prefix:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input-prefix span {
+  color: var(--muted);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.input-prefix input {
+  border: none;
+  background: none;
+  padding-left: 2px;
+}
+
+.input-prefix input:focus {
+  outline: none;
+}
+
 .between-city-row {
   display: flex;
   gap: 8px;
@@ -437,9 +470,12 @@ input[type="number"]:focus {
   cursor: pointer;
 }
 
+/* Previously a 1px dashed var(--border) — border and page background were
+   both near-white, so the button read as barely there. Solid border in
+   --muted (visible grey) plus a faint fill gives it real button affordance. */
 .secondary-btn {
-  background: none;
-  border: 1px dashed var(--border);
+  background: var(--accent-light);
+  border: 1px solid var(--muted);
   border-radius: 10px;
   padding: 12px 14px;
   min-height: 44px;
@@ -448,6 +484,10 @@ input[type="number"]:focus {
   color: var(--accent);
   cursor: pointer;
   width: 100%;
+}
+
+.secondary-btn:hover {
+  background: var(--border);
 }
 
 .secondary-btn:disabled {

@@ -39,17 +39,26 @@
     <section id="form-section" class="form-section" hidden>
       <form id="blend-form" novalidate>
         <div class="field">
-          <label for="handle">handle / name</label>
-          <input type="text" id="handle" name="handle" maxlength="30" placeholder="@you" required>
+          <label for="handle">handle</label>
+          <!-- "@" is a persistent UI element, not typed text — the input's own
+               value never includes it, so the data stored is just "sofia",
+               not "@sofia". Display re-adds "@" wherever the handle is shown. -->
+          <div class="input-prefix">
+            <span aria-hidden="true">@</span>
+            <input type="text" id="handle" name="handle" maxlength="30" placeholder="you" required>
+          </div>
         </div>
 
         <div class="field">
-          <label for="birth-city">birth city</label>
+          <!-- Labeled to match the example card's own ORIGIN/NOW badges, shown
+               moments earlier — a callback rather than parallel-but-different
+               wording ("birth city" vs "origin"). -->
+          <label for="birth-city">origin</label>
           <input type="text" id="birth-city" name="birthCity" maxlength="40" placeholder="where it started" required>
         </div>
 
         <div class="field">
-          <label for="current-city">city you live in now</label>
+          <label for="current-city">now</label>
           <input type="text" id="current-city" name="currentCity" maxlength="40" placeholder="where you are" required>
         </div>
 
