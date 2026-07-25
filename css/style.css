@@ -223,9 +223,9 @@ body {
   font-size: calc(4.5cqw - var(--over) * 0.12cqw);
   font-weight: 500;
   letter-spacing: -0.015em;
-  /* the card is deliberately all-lowercase; city names arrive however the
-     person typed them, so normalise here rather than trusting the input */
-  text-transform: lowercase;
+  /* Casing is normalised in JS (formatCity) rather than CSS, because CSS
+     capitalize can't fix "MOSCOW" and the canvas renderer needs the same
+     result anyway. */
   overflow: hidden;
   text-overflow: ellipsis;
 }

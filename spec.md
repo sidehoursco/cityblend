@@ -72,6 +72,19 @@ Open question, only answerable empirically: on a taller-than-9:16 screen Instagr
 - **Therefore always render the finished image visibly on the page.** Long-press → "Save to Photos" is the one path that reliably works on iOS regardless of API support, so it should exist as a fallback for everyone, with clear wording telling people they can do it.
 - Needs testing on real devices, not emulation.
 
+**Confirmed on a real iPhone (2026-07-25):** the share-sheet path works, and a saved card posted to a story looks right. Two bugs the device test caught that emulation didn't:
+
+1. **Revoking the blob URL immediately after `a.click()` cancels the download** — desktop Chrome showed the button transition and then silently did nothing. Release the URL later, not synchronously.
+2. **People long-press or right-click the *card*, not a separate fallback image.** When the card was a DOM element that saved HTML, or nothing. Fix: render the PNG as soon as the card exists and swap it in for the DOM card, so what's on screen is literally the file that gets saved. This also removes any chance of preview and export drifting apart, and sidesteps a latent bug where awaiting the canvas render inside the click handler could burn the transient user activation `navigator.share()` requires.
+
+**Saving is not the finish line.** In testing it was easy to save the image and stop, because nothing signalled a next step — the card ends up in the camera roll and never reaches a story. There's now a post-save nudge. Note that mimicking Instagram's logo or brand gradient to make this more obvious is a trademark question, so keep it text or a neutral icon.
+
+### City name casing
+
+People type city names inconsistently ("MOSCOW", "moscow", "Moscow"), so the card normalises rather than trusting input either way. Currently **Title Case**, set by a single `CITY_CASE` constant in `js/card-image.js` and shared by the on-page card and the canvas renderer via `formatCity()` so the two cannot drift.
+
+Title Case over all-lowercase because the card's own reference argues for it: real metro maps set station names in Title Case, and the card no longer reads as "low effort" now that it's high-contrast and polished, which was the main thing the lowercase treatment bought. Still an open aesthetic call — flipping the constant to `'lower'` reverses it everywhere. Verified to handle `NOVARA`→`Novara`, `san sebastián`→`San Sebastián`, CJK unchanged, and Turkish dotted-İ correctly.
+
 ## Tone / voice
 
 Single consistent voice for all outputs. No tone switch/toggle in v1.

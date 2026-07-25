@@ -13,6 +13,23 @@
 const CARD_W = 1080;
 const CARD_H = 1920;
 
+/* How city names are cased on the card. People type them inconsistently
+ * ("MOSCOW", "moscow", "Moscow"), so this normalises rather than trusting the
+ * input either way. Flip this single constant to change both the on-page card
+ * and the exported PNG — they share formatCity() so they cannot drift.
+ *   'lower' — all lowercase, understated
+ *   'title' — Title Case, which is how real transit maps set station names
+ */
+const CITY_CASE = 'title';
+
+function formatCity(name, mode) {
+  const lowered = String(name).toLocaleLowerCase();
+  if ((mode || CITY_CASE) !== 'title') return lowered;
+  // capitalise after a start, space, hyphen or apostrophe: "san sebastián" ->
+  // "San Sebastián", "ho chi minh city" -> "Ho Chi Minh City"
+  return lowered.replace(/(^|[\s\-'’])(\p{L})/gu, (_, sep, ch) => sep + ch.toLocaleUpperCase());
+}
+
 const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
 const FONT_MONO = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
 
@@ -161,8 +178,7 @@ function drawCard(ctx, data) {
     const baseline = rowTops[i] + citySize * 0.85;
     ctx.font = `${isNow ? 700 : 500} ${citySize}px ${FONT_SANS}`;
     ctx.fillStyle = TEXT;
-    // matches text-transform: lowercase on .route .city
-    const shown = cityName.toLocaleLowerCase();
+    const shown = formatCity(cityName, data.cityCase);
     ctx.fillText(shown, textX, baseline);
     const cityW = ctx.measureText(shown).width;
 

@@ -119,7 +119,8 @@ function buildRoute(container, path, years) {
 
     const city = document.createElement('span');
     city.className = 'city';
-    city.textContent = cityName;
+    // shared with the canvas renderer so the preview can't drift from the export
+    city.textContent = formatCity(cityName);
     row.appendChild(city);
 
     let metaText = '';
