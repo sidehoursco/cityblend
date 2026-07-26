@@ -17,3 +17,17 @@ Real-money spend on this project. Free-tier infra (Vercel hosting, Upstash Redis
 ## Upcoming (not yet spent)
 
 - Domain registration (cityblend.app) — ~€10-15/yr
+
+## Per-card generation cost
+
+One card = one API call. The system prompt is ~2,076 tokens (it carries the voice rules and 8 worked examples), the user block is tiny, and replies are ~45 tokens. So cost is almost entirely input, which matters for the two levers below.
+
+| Model | Per card | 1,000 cards | 10,000 cards | What the current €5.33 credit buys |
+|---|---|---|---|---|
+| Haiku 4.5 (current) | $0.0023 | $2.32 | $23.23 | ~2,300 cards |
+| Sonnet | $0.0070 | $6.97 | $69.69 | ~765 cards |
+
+Two things worth knowing before assuming Sonnet is expensive:
+
+- **Prompt caching.** The system prompt is byte-identical on every call, which is the ideal case for it — cached input reads are billed at a large discount, so most of the per-card cost above is avoidable. Worth wiring up before ruling Sonnet out on price.
+- **The `HOURLY_LIMIT` / `GLOBAL_DAILY_LIMIT` caps already bound the worst case.** At the launch limit of 3/hour per person and 500/day globally, even Sonnet tops out around $3.50/day of API spend, and that only if the daily cap is actually saturated.
