@@ -198,13 +198,32 @@ function lineFaults(line, hasYears) {
   return faults;
 }
 
-function looksLikeDemonym(identity) {
-  const word = String(identity).toLowerCase().trim().replace(/^the\s+/, '');
+function sharesFragment(word, city, min) {
+  const c = String(city).toLowerCase().replace(/[^a-z]/g, '');
+  for (let len = c.length; len >= min; len -= 1) {
+    for (let i = 0; i + len <= c.length; i += 1) {
+      if (word.includes(c.slice(i, i + len))) return true;
+    }
+  }
+  return false;
+}
+
+/* Two independent ways an identity fails, both checked here:
+ *   1. It isn't demonym-SHAPED — "the vallorcelona" just fuses two place names.
+ *   2. It is shaped fine but isn't a BLEND — "the cypriot" for someone living in
+ *      Paris is simply Cyprus's own demonym, which skips the joke entirely.
+ * The second needs the destination: the blend exists to fuse where they came
+ * from with where they ended up, so the current city must be audible in it. */
+function looksLikeDemonym(identity, currentCity) {
+  const raw = String(identity).trim();
   // The non-demonym exception ("barely qualifies") is multi-word and carries no
   // "the ", so anything without a leading "the " is left alone.
-  if (!/^the\s+/i.test(String(identity).trim())) return true;
+  if (!/^the\s+/i.test(raw)) return true;
+  const word = raw.toLowerCase().replace(/^the\s+/, '');
   if (word.includes(' ')) return true;
-  return DEMONYM_ENDINGS.some((suffix) => word.endsWith(suffix));
+  if (!DEMONYM_ENDINGS.some((suffix) => word.endsWith(suffix))) return false;
+  if (currentCity && !sharesFragment(word, currentCity, 3)) return false;
+  return true;
 }
 
 /* Everything the model would otherwise have to derive by counting, computed
@@ -341,8 +360,8 @@ ${pathFacts(path, years)}
   // ("barely qualifies") carries no "the ", so only "the ..." forms are checked.
   if (out) {
     const problems = lineFaults(out.line, years.some((y) => y != null));
-    if (!looksLikeDemonym(out.identity)) {
-      problems.push(`The identity "${out.identity}" is not a demonym — it fuses two place NAMES with no demonym ending, so it reads as a typo. Use a real demonym suffix such as -ian, -ese, -er, -ino, -ois or -ite, keeping both cities audible.`);
+    if (!looksLikeDemonym(out.identity, path[path.length - 1])) {
+      problems.push(`The identity "${out.identity}" doesn't work: it must be a real demonym (ending -ian, -ese, -er, -ino, -ois, -ite) AND must audibly contain ${path[path.length - 1]}, where they live now. A single city's own demonym, or two place names fused without a demonym ending, both skip the joke.`);
     }
     if (problems.length) {
       console.error('output faults, retrying:', JSON.stringify({ identity: out.identity, line: out.line, problems }));
@@ -351,7 +370,7 @@ ${pathFacts(path, years)}
       );
       // Only accept the retry if it actually fixed things; otherwise the first
       // answer was at least a coherent joke, so prefer it over a worse second.
-      if (retry && !lineFaults(retry.line, years.some((y) => y != null)).length && looksLikeDemonym(retry.identity)) {
+      if (retry && !lineFaults(retry.line, years.some((y) => y != null)).length && looksLikeDemonym(retry.identity, path[path.length - 1])) {
         out = retry;
       }
     }
