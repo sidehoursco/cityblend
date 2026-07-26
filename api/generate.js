@@ -68,7 +68,7 @@ FINAL CHECK — go through these in order and fix anything that fails. Do not sk
 4. Would it fit a different person's path unchanged? If yes, start again.
 5. HARD: does it contain he, she, his, her, him, or otherwise assume a gender? Rewrite if so — you cannot know this.
 6. HARD: does it rank places by temperature or climate, or name a sea or coast? Cut those two specifically — you get them backwards. Other comparisons are fine.
-7. HARD: recount every number against the path — stops, moves, years, "four capitals", "three cities". Miscounting is the most common error and the easiest for a reader to catch.
+7. HARD: does every number in the line match the <counts> block given to you? Never count for yourself — the counts are supplied precisely because this is the error readers catch fastest. In particular, cities-after-the-birth-city is one fewer than total cities.
 8. HARD: could it read as saying their life amounted to nothing? Rewrite.
 
 Respond with ONLY a JSON object, no markdown, no code fences, no explanation, exactly this shape:
@@ -171,6 +171,72 @@ async function checkAndIncrementRateLimits(ip) {
   };
 }
 
+/* A demonym needs a demonym ending. Blends that merely fuse two place NAMES
+ * ("the vallorcelona") read as typos, so they get one retry. Deliberately
+ * permissive — it only has to catch endings that are obviously not demonyms. */
+const DEMONYM_ENDINGS = [
+  'ian', 'ean', 'an', 'ese', 'er', 'ino', 'ina', 'ois', 'aise', 'ite', 'iot',
+  'ish', 'ene', 'eno', 'ard', 'asque', 'egian', 'ic', 'ac', 'ite', 'i', 'ish',
+];
+
+function looksLikeDemonym(identity) {
+  const word = String(identity).toLowerCase().trim().replace(/^the\s+/, '');
+  // The non-demonym exception ("barely qualifies") is multi-word and carries no
+  // "the ", so anything without a leading "the " is left alone.
+  if (!/^the\s+/i.test(String(identity).trim())) return true;
+  if (word.includes(' ')) return true;
+  return DEMONYM_ENDINGS.some((suffix) => word.endsWith(suffix));
+}
+
+/* Everything the model would otherwise have to derive by counting, computed
+ * here instead. Models are unreliable at this and the failure is the one a
+ * reader spots instantly: a 4-city path got described as "four capitals in a
+ * row" when only 3 follow the origin, because total-cities and
+ * cities-after-origin get conflated. Handing over finished numbers removes the
+ * arithmetic entirely, and the derived facts double as material — a repeat
+ * city or a conspicuously short stay is exactly the specific detail that
+ * stops lines being generic. */
+function pathFacts(path, years) {
+  const n = path.length;
+  const norm = (c) => String(c).trim().toLowerCase();
+  const counts = path.reduce((acc, c) => {
+    acc[norm(c)] = (acc[norm(c)] || 0) + 1;
+    return acc;
+  }, {});
+  const repeated = Object.keys(counts)
+    .filter((k) => counts[k] > 1)
+    .map((k) => {
+      const original = path.find((c) => norm(c) === k);
+      return `${original} (${counts[k]} times)`;
+    });
+
+  const known = path
+    .map((city, i) => ({ city, y: years[i] }))
+    .filter((s) => s.y != null && s.y > 0);
+  let longest = 'not known';
+  let shortest = 'not known';
+  let total = 'not known';
+  if (known.length > 1) {
+    const byLen = [...known].sort((a, b) => b.y - a.y);
+    longest = `${byLen[0].city} (${byLen[0].y}y)`;
+    shortest = `${byLen[byLen.length - 1].city} (${byLen[byLen.length - 1].y}y)`;
+  }
+  if (known.length) total = `${known.reduce((s, k) => s + k.y, 0)} years accounted for`;
+
+  return [
+    `total cities listed: ${n}`,
+    `moves made: ${n - 1}`,
+    `cities after the birth city: ${n - 1}`,
+    `birth city: ${path[0]}`,
+    `current city: ${path[n - 1]}`,
+    `returned to the same city: ${repeated.length ? repeated.join(', ') : 'no'}`,
+    `ended up back where they started: ${n > 1 && norm(path[0]) === norm(path[n - 1]) ? 'yes' : 'no'}`,
+    `longest known stay: ${longest}`,
+    `shortest known stay: ${shortest}`,
+    `years: ${total}`,
+  ].join('\n');
+}
+
 async function generateBlend({ handle, path, years }) {
   const yearsLine = years.some((y) => y != null)
     ? path.map((city, i) => `${city}${years[i] != null ? ` (${years[i]}y)` : ''}`).join(' -> ')
@@ -182,60 +248,85 @@ async function generateBlend({ handle, path, years }) {
 handle: ${handle}
 path (chronological): ${path.join(' -> ')}
 years per stop: ${yearsLine}
-</data>`;
+</data>
 
-  const requestBody = {
-    model: MODEL,
-    // Was 200, which truncated mid-JSON when the model emitted any preamble —
-    // producing repeatable "unparseable output" on specific paths. This is a
-    // ceiling, not a spend: real replies are ~40 tokens.
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userContent }],
-  };
-  // Newer models reject `temperature` outright ("deprecated for this model")
-  // rather than just ignoring it, so this can't be a fixed field on the body.
-  if (!process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_MODEL === 'claude-haiku-4-5-20251001') {
-    requestBody.temperature = 0.8;
-  }
+These counts are already worked out for you. Use them exactly as given and never count anything yourself — note that the number of moves is always one fewer than the number of cities, which is the mistake to avoid:
+<counts>
+${pathFacts(path, years)}
+</counts>`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`anthropic api error: ${res.status} ${detail}`);
-  }
-
-  const json = await res.json();
-  const text = json.content?.[0]?.text || '';
-
-  // Take the first {...} block rather than requiring the whole response to be
-  // JSON. The prompt asks for bare JSON, but it also asks the model to check
-  // its work before answering, and it sometimes writes that reasoning out
-  // first — which made a whole-string parse fail ~2 in 3 times on short paths.
-  const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-  const start = stripped.indexOf('{');
-  const end = stripped.lastIndexOf('}');
-  const candidate = start !== -1 && end > start ? stripped.slice(start, end + 1) : stripped;
-
-  try {
-    const parsed = JSON.parse(candidate);
-    if (parsed.identity && parsed.line) {
-      return { identity: parsed.identity.toLowerCase(), line: parsed.line.toLowerCase() };
+  const attempt = async (extraNudge) => {
+    const requestBody = {
+      model: MODEL,
+      // Was 200, which truncated mid-JSON when the model emitted any preamble —
+      // producing repeatable "unparseable output" on specific paths. This is a
+      // ceiling, not a spend: real replies are ~40 tokens.
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: extraNudge ? `${userContent}\n\n${extraNudge}` : userContent }],
+    };
+    // Newer models reject `temperature` outright ("deprecated for this model")
+    // rather than just ignoring it, so this can't be a fixed field on the body.
+    if (!process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_MODEL === 'claude-haiku-4-5-20251001') {
+      requestBody.temperature = 0.8;
     }
-    console.error('model JSON missing identity/line:', text);
-  } catch (err) {
-    console.error('unparseable model output:', JSON.stringify({ stop_reason: json.stop_reason, text }));
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`anthropic api error: ${res.status} ${detail}`);
+    }
+
+    const json = await res.json();
+    const text = json.content?.[0]?.text || '';
+
+    // Take the first {...} block rather than requiring the whole response to be
+    // JSON. The prompt asks for bare JSON, but it also asks the model to check
+    // its work before answering, and it sometimes writes that reasoning out
+    // first — which made a whole-string parse fail ~2 in 3 times on short paths.
+    const stripped = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+    const start = stripped.indexOf('{');
+    const end = stripped.lastIndexOf('}');
+    const candidate = start !== -1 && end > start ? stripped.slice(start, end + 1) : stripped;
+
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed.identity && parsed.line) {
+        return { identity: String(parsed.identity).toLowerCase(), line: String(parsed.line).toLowerCase() };
+      }
+      console.error('model JSON missing identity/line:', text);
+    } catch (err) {
+      console.error('unparseable model output:', JSON.stringify({ stop_reason: json.stop_reason, text }));
+    }
+    return null;
+  };
+
+  let out = await attempt();
+
+  // One retry when the identity isn't actually a demonym. Prompt emphasis alone
+  // kept producing things like "the vallorcelona" — a blended city NAME with no
+  // demonym suffix, which reads as a typo rather than a joke. Cheap to detect
+  // here and worth a second call, since the identity is the biggest word on the
+  // card. The short-phrase exception ("barely qualifies") takes no "the ", so
+  // only "the ..." forms are checked.
+  if (out && !looksLikeDemonym(out.identity)) {
+    console.error('identity not demonym-shaped, retrying:', out.identity);
+    const retry = await attempt(
+      `Your previous attempt returned the identity "${out.identity}", which is not a demonym — it is a blended place NAME with no demonym ending, so it reads as a typo rather than a joke. Return a blend that ends in a real demonym suffix such as -ian, -ese, -er, -ino, -ois or -ite, while still keeping both cities audible in it.`
+    );
+    if (retry) out = retry;
   }
-  return { identity: 'the unblended', line: 'this one confused even the model — try again' };
+
+  return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
 }
 
 module.exports = async function handler(req, res) {
