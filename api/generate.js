@@ -232,7 +232,7 @@ function sharesFragment(word, city, min) {
  *      Paris is simply Cyprus's own demonym, which skips the joke entirely.
  * The second needs the destination: the blend exists to fuse where they came
  * from with where they ended up, so the current city must be audible in it. */
-function looksLikeDemonym(identity, currentCity) {
+function looksLikeDemonym(identity, path) {
   const raw = String(identity).trim();
   // The non-demonym exception ("barely qualifies") is multi-word and carries no
   // "the ", so anything without a leading "the " is left alone.
@@ -240,8 +240,23 @@ function looksLikeDemonym(identity, currentCity) {
   const word = raw.toLowerCase().replace(/^the\s+/, '');
   if (word.includes(' ')) return true;
   if (!DEMONYM_ENDINGS.some((suffix) => word.endsWith(suffix))) return false;
-  if (currentCity && !sharesFragment(word, currentCity, 3)) return false;
-  return true;
+
+  const norm = (c) => String(c).trim().toLowerCase();
+  const currentCity = path[path.length - 1];
+  // Where they live now has to be in there — that's the half of the blend the
+  // joke lands on.
+  if (!sharesFragment(word, currentCity, 3)) return false;
+
+  // ...and so does at least one OTHER city, or it isn't a blend at all: "the
+  // kyevite" for Moscow->Kyev is just Kyev's own demonym and passed the
+  // current-city test on its own. Deliberately any other city rather than the
+  // birth city specifically, because blending a middle stop onto the
+  // destination is legitimate ("the novbarcelonese" from a path through
+  // Novara). Single-distinct-city paths (never moved) have no second city to
+  // find, so the requirement doesn't apply to them.
+  const others = path.slice(0, -1).filter((c) => norm(c) !== norm(currentCity));
+  if (!others.length) return true;
+  return others.some((c) => sharesFragment(word, c, 3));
 }
 
 /* Everything the model would otherwise have to derive by counting, computed
@@ -423,7 +438,7 @@ ${angleFor(path, years)}
     if (bare.length > 20 && !bare.includes(' ')) {
       problems.push(`The identity "${candidate.identity}" is ${bare.length} letters long. Nobody reads that as a word, and it does not fit the card. Keep the blend under about 18 letters by using shorter fragments of each city.`);
     }
-    if (!looksLikeDemonym(candidate.identity, path[path.length - 1])) {
+    if (!looksLikeDemonym(candidate.identity, path)) {
       problems.push(`The identity "${candidate.identity}" doesn't work: it must be a real demonym (ending -ian, -ese, -er, -ino, -ois, -ite) AND must audibly contain ${path[path.length - 1]}, where they live now. A single city's own demonym, or two place names fused without a demonym ending, both skip the joke.`);
     }
     return problems;
