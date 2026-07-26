@@ -1,19 +1,31 @@
-/* Dark page, tonally distinct from the card rather than colour-matched to
-   it: page ground (--bg) is a plain neutral grey a few steps lighter than
-   the card's own #0D1014, so the card still reads as the darkest, densest
-   object on the page (a lightness gap, not a hue one — no colour here has
-   to get along with whichever of the 9 per-person line colours a given
-   card lands on). --accent is neutral light for the same reason: a button
-   colour that never fights with the card's accent instead of trying to
-   match it. */
+/* Light page under a near-black card. Tried a dark page twice; it can't
+   work, and the reason is measurable rather than a matter of taste. The
+   card is #0D1014, so the only way to separate it from its surround is to
+   make the surround LIGHTER — and any page dark enough to still read as
+   "dark mode" sits within ~1.9:1 of the card even when pushed to a washed
+   grey (#3A434D), while brightening that far simultaneously drags the
+   muted label colour under the 4.5:1 AA floor. A light page gives 16.5:1
+   card separation with every text pair comfortably AA. Same reason --accent
+   stays neutral near-black: it never has to get along with whichever of
+   the 9 per-person line colours a card lands on.
+
+   Every value here is measured, not eyeballed. Contrast vs its own
+   background, WCAG 2.1 AA (4.5:1 body text, 3:1 non-text UI):
+     --ink on --bg ............ 15.65:1
+     --ink on white field ..... 18.11:1
+     --muted on --bg .......... 5.08:1
+     --border on white field .. 3.78:1  (was 1.72:1 — a real AA failure)
+     card vs --bg ............. 16.48:1 (was 1.16:1)
+   If you change a colour here, re-measure rather than assuming. */
 :root {
-  --ink: #F2F4F0;
-  --muted: #8B929A;
-  --bg: #1C2024;
-  --accent: #F2F4F0;
-  --accent-contrast: #14161A;
-  --accent-light: #262B31;
-  --border: #40464D;
+  --ink: #14161A;
+  --muted: #5F656D;
+  --bg: #EDEFEB;
+  --field: #FFFFFF;
+  --accent: #14161A;
+  --accent-contrast: #FFFFFF;
+  --accent-light: #E2E4DF;
+  --border: #7D848C;
 }
 
 * {
@@ -406,7 +418,7 @@ input[type="number"] {
   font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--field);
   color: var(--ink);
 }
 
@@ -424,7 +436,7 @@ input[type="number"]:focus {
   min-height: 48px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--field);
   padding-left: 14px;
 }
 
