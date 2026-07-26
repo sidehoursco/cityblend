@@ -57,6 +57,66 @@ function lineColorFor(path) {
   return LINE_COLORS[h % LINE_COLORS.length];
 }
 
+/* Hand-picked, not generated on the fly — this card is the whole pitch to
+ * someone arriving cold from a shared story, so it can't be left to a model
+ * having an average day. Each line here was reviewed and kept; the generator
+ * produces plenty that aren't good enough for the front page.
+ *
+ * The set is deliberately spread across path lengths, and deliberately leads
+ * with short paths as often as long ones: most visitors have lived in two or
+ * three cities, and "barely qualifies" answers the main reason someone
+ * wouldn't bother trying it ("my path is boring"). `id` is what gets recorded
+ * for conversion-by-example, so keep ids stable even if wording is tweaked. */
+const EXAMPLE_CARDS = [
+  {
+    id: 'hanoi-warsaw',
+    handle: 'linh',
+    identity: 'the hanarsawian',
+    line: "swapped one capital's chaos for another's gloom and called it a lateral move",
+    path: ['Hanoi', 'Warsaw'],
+    years: [null, null],
+  },
+  {
+    id: 'terrassa-barcelona',
+    handle: 'pau',
+    identity: 'barely qualifies',
+    line: 'moved 30km and still filled out this form',
+    path: ['Terrassa', 'Barcelona'],
+    years: [null, null],
+  },
+  {
+    id: 'moscow-london-barcelona',
+    handle: 'sofia',
+    identity: 'the moscelonian',
+    line: 'ten years in barcelona, still leads with moscow',
+    path: ['Moscow', 'London', 'Barcelona'],
+    years: [null, 5, 10],
+  },
+  {
+    id: 'seoul-paris-seoul-montreal',
+    handle: 'min',
+    identity: 'the seoultrealian',
+    line: 'paris was the gap year that lasted forever',
+    path: ['Seoul', 'Paris', 'Seoul', 'Montreal'],
+    years: [null, null, null, null],
+  },
+];
+
+function renderExampleCard() {
+  const card = document.getElementById('example-card');
+  if (!card) return;
+  const pick = EXAMPLE_CARDS[Math.floor(Math.random() * EXAMPLE_CARDS.length)];
+
+  card.dataset.example = pick.id;
+  card.style.setProperty('--n', String(pick.path.length));
+  card.style.setProperty('--line', lineColorFor(pick.path));
+  document.getElementById('example-handle').textContent = `@${pick.handle}`;
+  document.getElementById('example-count').textContent = String(pick.path.length);
+  document.getElementById('example-identity').textContent = pick.identity;
+  document.getElementById('example-line').textContent = pick.line;
+  buildRoute(document.getElementById('example-route'), pick.path, pick.years);
+}
+
 let lastPayload = null;
 
 makeYoursBtn.addEventListener('click', () => {
@@ -333,4 +393,5 @@ function nudgeToInstagram() {
 
 saveBtn.addEventListener('click', saveCard);
 
+renderExampleCard();
 updateCapUI();

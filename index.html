@@ -13,19 +13,23 @@
       <p class="subhead">enter the cities you've lived in, get a name and a line that's actually about you.</p>
     </header>
 
+    <!-- Populated by main.js from EXAMPLE_CARDS, one picked at random per
+         visit. The markup below is a real card (not a placeholder) so the page
+         still shows something sensible if JS fails. data-example on the card
+         records which one was shown, ready for conversion-by-example analytics
+         once the aggregate tool exists. -->
     <section class="cardwrap" aria-label="example card">
-      <div class="card" style="--n:3; --line:#00A9B8">
+      <div class="card" id="example-card" style="--n:2; --line:#00A9B8">
         <div class="card__inner">
           <div class="c-top">
-            <span class="c-handle">@sofia</span>
-            <span class="c-badge"><b>3</b><i>stops</i></span>
+            <span class="c-handle" id="example-handle">@linh</span>
+            <span class="c-badge"><b id="example-count">2</b><i>stops</i></span>
           </div>
-          <h2 class="c-identity">the moscelonian</h2>
-          <p class="c-line">moscow-raised, did five years in london, chose barcelona anyway</p>
-          <ol class="route">
-            <li><span class="city">moscow</span><span class="meta">origin</span></li>
-            <li><span class="city">london</span><span class="meta">5 yrs</span></li>
-            <li class="is-now"><span class="city">barcelona</span><span class="meta">now</span></li>
+          <h2 class="c-identity" id="example-identity">the hanarsawian</h2>
+          <p class="c-line" id="example-line">swapped one capital's chaos for another's gloom and called it a lateral move</p>
+          <ol class="route" id="example-route">
+            <li><span class="city">Hanoi</span><span class="meta">origin</span></li>
+            <li class="is-now"><span class="city">Warsaw</span><span class="meta">now</span></li>
           </ol>
           <span class="c-foot">and you? → cityblend.app</span>
         </div>
