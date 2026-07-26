@@ -160,6 +160,9 @@ From this log, also track: distribution of path length (validates whether the 8-
 - Buy domain (cityblend.app) — see note below, this is more time-pressured than it looks
 - Confirm current free-tier limits on GoatCounter / Vercel Analytics at setup
 - Expand the content blocklist beyond the current starter list before real traffic
+- **Analytics aren't installed at all yet** — no GoatCounter, Plausible or Vercel Analytics script is on the page. Everything in the Analytics section above is still a plan, so today a launch would produce no numbers whatsoever, including the conversion rate that's supposed to be the headline metric.
+- **The footer "stats" link is dead** — `#stats-link` is `href="#"` with no handler in `js/main.js`. It's visible to every visitor and does nothing. Either wire it to the public stats view or remove it before launch; a link that goes nowhere reads as broken.
+- **The content log isn't built.** Redis currently does nothing but `INCR`/`EXPIRE` for rate limiting. Worth pulling forward rather than leaving to v2: right now line quality is being judged from screenshots one card at a time, and a log of handle + path + output + timestamp would make it possible to read fifty at once and see which failure patterns are actually common instead of which ones happened to be noticed. It's also the blocker on the comparative badge idea ("more moves than 78% of people").
 - Track conversion by which example card a visitor saw, once the aggregate log exists — `#example-card` already carries a stable `data-example` id for exactly this.
 - Later/v2 idea, not scoped: Instagram gives no way for someone who taps a friend's Story to land on the sender's own card — no referral-personalization path exists without a manually-added link sticker per share.
 
