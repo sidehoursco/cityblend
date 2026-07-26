@@ -119,11 +119,58 @@ function renderExampleCard() {
 
 let lastPayload = null;
 
-makeYoursBtn.addEventListener('click', () => {
+const stickyCta = document.getElementById('sticky-cta');
+const stickyMakeYoursBtn = document.getElementById('sticky-make-yours');
+let formRevealed = false;
+
+function revealForm() {
   formSection.hidden = false;
   makeYoursBtn.hidden = true;
+  formRevealed = true;
+  stickyCta.classList.remove('is-visible');
   formSection.scrollIntoView({ behavior: 'smooth' });
-});
+}
+
+makeYoursBtn.addEventListener('click', revealForm);
+stickyMakeYoursBtn.addEventListener('click', revealForm);
+
+/* The example card can't shrink enough to keep the CTA above the fold on a
+ * short phone without becoming an illegible thumbnail, and a tester who
+ * couldn't see a button assumed the example card WAS the input. So rather than
+ * compromise the card, the CTA follows: it shows whenever the real button is
+ * off screen, and never once the form is open — a duplicate CTA pointing at a
+ * form you're already looking at is just clutter.
+ *
+ * Measured from getBoundingClientRect on scroll/resize rather than via
+ * IntersectionObserver, for two reasons. It needs a correct answer
+ * synchronously on first paint — the main case is the button starting below the
+ * fold, where waiting for an async callback means the page briefly offers no
+ * visible action at all. And IO callbacks are suspended while a document is
+ * hidden, which made the behaviour untestable and would silently do nothing in
+ * a backgrounded tab. rAF-throttled, so scrolling still costs one measurement
+ * per frame at most. */
+function syncStickyCta() {
+  if (formRevealed) {
+    stickyCta.classList.remove('is-visible');
+    return;
+  }
+  const box = makeYoursBtn.getBoundingClientRect();
+  const onScreen = box.top < window.innerHeight && box.bottom > 0;
+  stickyCta.classList.toggle('is-visible', !onScreen);
+}
+
+let stickyTick = false;
+function queueStickySync() {
+  if (stickyTick) return;
+  stickyTick = true;
+  requestAnimationFrame(() => {
+    stickyTick = false;
+    syncStickyCta();
+  });
+}
+
+window.addEventListener('scroll', queueStickySync, { passive: true });
+window.addEventListener('resize', queueStickySync);
 
 function betweenRowCount() {
   return betweenList.querySelectorAll('.between-city-row').length;
@@ -394,4 +441,6 @@ function nudgeToInstagram() {
 saveBtn.addEventListener('click', saveCard);
 
 renderExampleCard();
+// after the example card is sized, since its height decides where the CTA sits
+syncStickyCta();
 updateCapUI();

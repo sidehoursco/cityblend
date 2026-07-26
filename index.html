@@ -81,8 +81,12 @@
              form for most people, and this section used to sit between them —
              watched a real user hesitate over it before reaching "current
              city", the field they actually needed next. -->
+        <!-- The old label read "optional — any stops in between", where
+             "optional" described the stops. A tester read it that way and
+             then filled in every years box, assuming those were required.
+             Both facts now get said. -->
         <div class="field" id="between-cities-field">
-          <label><span class="hint">optional —</span> any stops in between, chronological order</label>
+          <label>any stops in between, in order <span class="hint">— optional, and the years are too</span></label>
           <div id="between-cities-list"></div>
           <button type="button" id="add-city-btn" class="secondary-btn">+ add a stop</button>
           <p class="cap-note" id="cap-note"></p>
@@ -127,14 +131,23 @@
     </footer>
   </main>
 
-  <!-- The years box says "yrs (opt.)" because a tester filled every one in,
-       assuming they were required. Nothing marked them optional — the word
-       "optional" on the section label above refers to the stops themselves,
-       which is a different question. -->
+  <!-- Appears only once the real "make yours" button has scrolled out of
+       view, and never again after the form is open. The example card can't
+       shrink far enough to keep the CTA above the fold on a short phone
+       without becoming an illegible thumbnail, so instead of compromising
+       the card the CTA follows you down. -->
+  <div class="sticky-cta" id="sticky-cta">
+    <button type="button" id="sticky-make-yours">make yours</button>
+  </div>
+
+  <!-- Placeholder stays short: the years box is a narrow flex child, so
+       anything longer than "years" is clipped mid-word ("yrs (opt." with the
+       bracket cut off). That the years are optional is said in the section
+       label instead, where there's room to say it properly. -->
   <template id="between-city-row-template">
     <div class="between-city-row">
       <input type="text" class="between-city-input" maxlength="40" placeholder="a city in between">
-      <input type="number" class="between-city-years" placeholder="yrs (opt.)" min="0" max="99">
+      <input type="number" class="between-city-years" placeholder="years" min="0" max="99">
       <button type="button" class="remove-city-btn" aria-label="remove city">×</button>
     </div>
   </template>

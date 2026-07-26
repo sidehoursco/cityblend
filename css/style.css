@@ -331,7 +331,41 @@ body {
   margin-bottom: 8px;
 }
 
+/* Slides up from the bottom once the real CTA scrolls away. visibility (not
+   display) so it stays out of the tab order and the accessibility tree when
+   hidden while still being able to animate. env(safe-area-inset-bottom) keeps
+   it clear of the iPhone home indicator. */
+.sticky-cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  visibility: hidden;
+  transform: translateY(100%);
+  /* Only transform is transitioned. Transitioning visibility would make
+     appearing depend on a transition finishing, and transitions are frozen
+     whenever the document is hidden — the bar would then never show. This way
+     the worst case is no animation, not no button. */
+  transition: transform 0.22s ease;
+}
+
+.sticky-cta.is-visible {
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticky-cta { transition: none; }
+}
+
 #make-yours-btn,
+#sticky-make-yours,
 #submit-btn,
 #save-btn {
   background: var(--accent);
