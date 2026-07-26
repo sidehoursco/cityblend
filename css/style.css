@@ -85,11 +85,28 @@ body {
    off a 812px phone screen entirely, so nothing on the first screen told
    anyone there was a next step. A tester stalled here, tried tapping the
    card as if it were the form, and only found the button by chance. */
-/* 272px keeps the whole CTA above the fold on a 375x812 phone (measured, not
-   guessed — at 292px the button's last 7px fell below it). Result cards keep
-   the full 340px; only this preview shrinks. */
+/* The example card is capped against the VIEWPORT, not a fixed pixel width.
+   A fixed 272px was tuned against 375x812 with no browser chrome, which is a
+   fiction: Safari's URL bar and toolbar eat ~110px, so on a real phone the
+   CTA dropped back below the fold. dvh tracks the actually-visible viewport
+   (and updates as the chrome collapses on scroll), so the card yields space
+   rather than the button falling off. ~330px is the rest of the first screen:
+   hero + caption + CTA + margins. aspect-ratio then narrows the width to
+   match, keeping 9:16 intact. Result cards are unaffected — they're below
+   the fold by nature and should stay full size. */
 .cardwrap--example .card {
+  /* height-driven, width auto: .card sets width:100%, and capping only the
+     height against that squashes the card to the wrong shape (measured 0.81
+     instead of 9:16). Driving from height lets aspect-ratio derive the width
+     so the preview always shows the true proportions of the exported image. */
+  width: auto;
   max-width: 272px;
+  /* clamp, not min: below ~380px tall the card stops being a showcase and
+     becomes an illegible thumbnail (142x253 measured on an iPhone SE minus
+     Safari chrome), which defeats the point of showing it at all. So on very
+     short viewports the card holds its size and the CTA goes back below the
+     fold — see the note in spec.md, that last bit is an open design call. */
+  height: clamp(380px, calc(100dvh - 325px), 484px);
 }
 
 .example-caption {
