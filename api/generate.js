@@ -179,6 +179,25 @@ const DEMONYM_ENDINGS = [
   'ish', 'ene', 'eno', 'ard', 'asque', 'egian', 'ic', 'ac', 'ite', 'i', 'ish',
 ];
 
+/* Deterministic output faults worth a retry. These are all things the prompt
+ * already asks for and the model still gets wrong at a low but real rate — and
+ * unlike "is it funny", each is decidable in code, so it shouldn't be left to
+ * the model's own final check.
+ *   - Gendered pronouns: a handle never implies gender, and a card that
+ *     misgenders the person who is about to post it is the worst failure here.
+ *   - Invented durations: when no years were submitted there is nothing to
+ *     count, yet lines still claim "three years". */
+function lineFaults(line, hasYears) {
+  const faults = [];
+  if (/\b(he|she|his|her|him|hers|himself|herself)\b/i.test(line)) {
+    faults.push('It used a gendered pronoun. You cannot know this person\'s gender from a handle — rewrite without he/she/his/her/him.');
+  }
+  if (!hasYears && /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(year|years|months?|decades?)\b/i.test(line)) {
+    faults.push('It stated a length of time, but no years were submitted for this path, so any duration is invented. Remove it.');
+  }
+  return faults;
+}
+
 function looksLikeDemonym(identity) {
   const word = String(identity).toLowerCase().trim().replace(/^the\s+/, '');
   // The non-demonym exception ("barely qualifies") is multi-word and carries no
@@ -312,18 +331,30 @@ ${pathFacts(path, years)}
 
   let out = await attempt();
 
-  // One retry when the identity isn't actually a demonym. Prompt emphasis alone
-  // kept producing things like "the vallorcelona" — a blended city NAME with no
-  // demonym suffix, which reads as a typo rather than a joke. Cheap to detect
-  // here and worth a second call, since the identity is the biggest word on the
-  // card. The short-phrase exception ("barely qualifies") takes no "the ", so
-  // only "the ..." forms are checked.
-  if (out && !looksLikeDemonym(out.identity)) {
-    console.error('identity not demonym-shaped, retrying:', out.identity);
-    const retry = await attempt(
-      `Your previous attempt returned the identity "${out.identity}", which is not a demonym — it is a blended place NAME with no demonym ending, so it reads as a typo rather than a joke. Return a blend that ends in a real demonym suffix such as -ian, -ese, -er, -ino, -ois or -ite, while still keeping both cities audible in it.`
-    );
-    if (retry) out = retry;
+  // A single retry for faults that are decidable in code. The prompt asks for
+  // all of these already; the model complies most of the time and not always,
+  // and one extra call is cheap next to shipping a card that misgenders someone
+  // or invents a duration. The identity check exists because prompt emphasis
+  // alone kept yielding things like "the vallorcelona" — two place NAMES fused
+  // with no demonym ending, which reads as a typo rather than a joke, and the
+  // identity is the largest word on the card. The short-phrase exception
+  // ("barely qualifies") carries no "the ", so only "the ..." forms are checked.
+  if (out) {
+    const problems = lineFaults(out.line, years.some((y) => y != null));
+    if (!looksLikeDemonym(out.identity)) {
+      problems.push(`The identity "${out.identity}" is not a demonym — it fuses two place NAMES with no demonym ending, so it reads as a typo. Use a real demonym suffix such as -ian, -ese, -er, -ino, -ois or -ite, keeping both cities audible.`);
+    }
+    if (problems.length) {
+      console.error('output faults, retrying:', JSON.stringify({ identity: out.identity, line: out.line, problems }));
+      const retry = await attempt(
+        `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
+      );
+      // Only accept the retry if it actually fixed things; otherwise the first
+      // answer was at least a coherent joke, so prefer it over a worse second.
+      if (retry && !lineFaults(retry.line, years.some((y) => y != null)).length && looksLikeDemonym(retry.identity)) {
+        out = retry;
+      }
+    }
   }
 
   return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
