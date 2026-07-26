@@ -198,7 +198,21 @@ function lineFaults(line, hasYears) {
   if (!hasYears && /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(year|years|months?|decades?)\b/i.test(line)) {
     faults.push('It stated a length of time, but no years were submitted for this path, so any duration is invented. Remove it.');
   }
+  // Continent and country counts are wrong often enough to be worth refusing
+  // outright: a Cairo/Rome/Amsterdam/Lisbon path got called three continents
+  // when it is two, and unlike stop counts there's nothing in <counts> to check
+  // against without shipping a country-to-continent dataset.
+  if (/\bcontinents?\b/i.test(line)) {
+    faults.push('It mentioned continents. You miscount these and nothing verifies it — drop the continent reference entirely.');
+  }
   return faults;
+}
+
+/* Fixed deterministically rather than by retrying: it's a plain preposition
+ * error the model repeats ("started in an island"), and rewriting the word is
+ * strictly better than spending a call to re-roll an otherwise fine joke. */
+function tidyLine(line) {
+  return String(line).replace(/\bin (an? )?(island|islands)\b/gi, 'on $1$2');
 }
 
 function sharesFragment(word, city, min) {
@@ -352,31 +366,40 @@ ${pathFacts(path, years)}
   };
 
   let out = await attempt();
+  if (out) out.line = tidyLine(out.line);
 
-  // A single retry for faults that are decidable in code. The prompt asks for
-  // all of these already; the model complies most of the time and not always,
-  // and one extra call is cheap next to shipping a card that misgenders someone
-  // or invents a duration. The identity check exists because prompt emphasis
-  // alone kept yielding things like "the vallorcelona" — two place NAMES fused
-  // with no demonym ending, which reads as a typo rather than a joke, and the
-  // identity is the largest word on the card. The short-phrase exception
-  // ("barely qualifies") carries no "the ", so only "the ..." forms are checked.
-  if (out) {
-    const problems = lineFaults(out.line, years.some((y) => y != null));
-    if (!looksLikeDemonym(out.identity, path[path.length - 1])) {
-      problems.push(`The identity "${out.identity}" doesn't work: it must be a real demonym (ending -ian, -ese, -er, -ino, -ois, -ite) AND must audibly contain ${path[path.length - 1]}, where they live now. A single city's own demonym, or two place names fused without a demonym ending, both skip the joke.`);
+  // Up to two retries on faults that are decidable in code. An earlier version
+  // kept the FIRST answer whenever a retry also tripped a rule, on the theory
+  // that a coherent joke beat a dull one — but that shipped known-bad output:
+  // a misgendering pronoun, or an invented duration, reached real cards that
+  // way. So instead every attempt is scored and the one with the fewest faults
+  // wins, preferring a later attempt on a tie since it was told what to fix.
+  const score = (candidate) => {
+    if (!candidate) return [];
+    const problems = lineFaults(candidate.line, years.some((y) => y != null));
+    if (!looksLikeDemonym(candidate.identity, path[path.length - 1])) {
+      problems.push(`The identity "${candidate.identity}" doesn't work: it must be a real demonym (ending -ian, -ese, -er, -ino, -ois, -ite) AND must audibly contain ${path[path.length - 1]}, where they live now. A single city's own demonym, or two place names fused without a demonym ending, both skip the joke.`);
     }
-    if (problems.length) {
-      console.error('output faults, retrying:', JSON.stringify({ identity: out.identity, line: out.line, problems }));
-      const retry = await attempt(
-        `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
-      );
-      // Only accept the retry if it actually fixed things; otherwise the first
-      // answer was at least a coherent joke, so prefer it over a worse second.
-      if (retry && !lineFaults(retry.line, years.some((y) => y != null)).length && looksLikeDemonym(retry.identity, path[path.length - 1])) {
-        out = retry;
-      }
+    return problems;
+  };
+
+  let problems = score(out);
+  for (let round = 0; round < 2 && out && problems.length; round += 1) {
+    console.error('output faults, retrying:', JSON.stringify({ round, identity: out.identity, line: out.line, problems }));
+    const retry = await attempt(
+      `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
+    );
+    if (!retry) break;
+    retry.line = tidyLine(retry.line);
+    const retryProblems = score(retry);
+    // <= so a tie favours the retry: it had the faults spelled out for it.
+    if (retryProblems.length <= problems.length) {
+      out = retry;
+      problems = retryProblems;
     }
+  }
+  if (out && problems.length) {
+    console.error('shipping with unresolved faults:', JSON.stringify({ identity: out.identity, line: out.line, problems }));
   }
 
   return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
