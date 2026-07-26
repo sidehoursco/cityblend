@@ -39,6 +39,26 @@ const TEXT_SOFT = '#E4E8E3';
 const TEXT_MUTED = '#78848C';
 const META_MUTED = '#6E7A83';
 
+/* Breaks a single word that is itself wider than the line. Needed because the
+ * identity is one invented word with no spaces in it — "the moskvetersburger"
+ * has nowhere to wrap, so a whitespace-only splitter drew it straight past the
+ * card edge. Mirrors overflow-wrap:anywhere on .c-identity in the stylesheet. */
+function breakLongWord(ctx, word, maxWidth) {
+  if (ctx.measureText(word).width <= maxWidth) return [word];
+  const pieces = [];
+  let current = '';
+  for (const char of word) {
+    if (current && ctx.measureText(current + char).width > maxWidth) {
+      pieces.push(current);
+      current = char;
+    } else {
+      current += char;
+    }
+  }
+  if (current) pieces.push(current);
+  return pieces;
+}
+
 function wrapLines(ctx, text, maxWidth) {
   const words = String(text).split(/\s+/).filter(Boolean);
   const lines = [];
@@ -47,12 +67,19 @@ function wrapLines(ctx, text, maxWidth) {
     const candidate = current ? `${current} ${word}` : word;
     if (current && ctx.measureText(candidate).width > maxWidth) {
       lines.push(current);
-      current = word;
+      current = '';
+      const pieces = breakLongWord(ctx, word, maxWidth);
+      // all but the last piece are full lines; the tail keeps accumulating
+      pieces.slice(0, -1).forEach((piece) => lines.push(piece));
+      current = pieces[pieces.length - 1];
     } else {
       current = candidate;
     }
   });
-  if (current) lines.push(current);
+  if (current) {
+    const pieces = breakLongWord(ctx, current, maxWidth);
+    pieces.forEach((piece) => lines.push(piece));
+  }
   return lines;
 }
 

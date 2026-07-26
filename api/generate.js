@@ -27,6 +27,7 @@ WHAT MAKES IT GOOD
 - Around 14 words maximum, usually fewer. Past that you are explaining rather than landing it.
 - At most two cities named; zero is often strongest. Don't build the line as a sequence of places — that's the route, not a verdict.
 - THE TEST THAT MATTERS MOST: would this exact line fit a different person's path unchanged? If yes it is too generic — find the thing only this person has and write that instead. Two people with different paths must never get the same joke.
+- IT HAS TO BE UNDERSTOOD ON THE FIRST READ. Real testers stalled on lines they had to decode, then gave up — a joke that needs working out has already failed, and it fails in public on someone's story. Say what the "it" is instead of leaving a pronoun pointing at nothing, and never stack two abstractions on one number ("spent the next 16 years proving it wasn't enough" and "made 5 moves in 15 to prove it wrong" both read as nonsense to actual readers). If you would have to explain the line, throw it away and write a plainer one — plain and funny beats clever and opaque every time.
 
 BEING RIGHT ABOUT PLACES — this is calibration, not caution. Use what you know well; it is good material.
 You know these reliably, so use them freely: whether a city is big, small or genuinely obscure; roughly how big; whether somewhere is a capital, including of a region rather than a country (Barcelona is the capital of Catalonia and that counts); the language ordinarily spoken somewhere when it is unambiguous; well-known things associated with a place.
@@ -292,6 +293,42 @@ function pathFacts(path, years) {
   ].join('\n');
 }
 
+/* Rotating creative brief. Every card previously got the same menu of options
+ * and the model resolved it the same way each time, which is why real cards
+ * came out interchangeable ("N moves in, still ...") — the sameness came from
+ * asking one broad question rather than from any single instruction. So the
+ * angle is CHOSEN HERE, one per request, and only angles the path can actually
+ * support are eligible: the return joke needs a repeat, the duration joke needs
+ * years. Weighting is by repetition in the list, which keeps the tuning in one
+ * readable place.
+ *
+ * "City character" is first and weighted highest because it's what the two
+ * best-received lines both did — Warsaw as gloomy, Hanoi as chaotic. Those work
+ * because a real, widely-shared quality of a place is something the card cannot
+ * show, and it reads as knowledgeable rather than generated. */
+function angleFor(path, years) {
+  const norm = (c) => String(c).trim().toLowerCase();
+  const hasRepeat = new Set(path.map(norm)).size < path.length;
+  const hasYears = years.some((y) => y != null);
+
+  const angles = [
+    'CITY CHARACTER: build the joke on one real, widely-recognised quality of ONE of these cities — its reputation, mood, pace, what it is known for being like. Warsaw as stubborn, Hanoi as chaotic, a city known for being sleepy or expensive or relentlessly cheerful. Confident opinion is wanted here, not hedging; this is the angle that makes a line feel knowledgeable instead of generated.',
+    'CITY CHARACTER: build the joke on one real, widely-recognised quality of ONE of these cities — its reputation, mood, pace, what it is known for being like. Be specific and opinionated about the place; a bland adjective wastes the angle.',
+    'CITY CHARACTER: pick ONE city on this path and lean on something it is genuinely known for — an attitude, a stereotype about the place itself, a thing it cannot stop being. Then say what living there or leaving it says about this person.',
+    "SELF-IMAGE GAP: the joke is the distance between how this person would describe their path at a party and what it plainly is. Let them look slightly ridiculous without being cruel — this is the angle that produced \"moved 30km and still filled out this form\".",
+    'FRESH IMAGE: find an unexpected noun or metaphor that reframes the whole path, the way "zero passport stamps" reframes never having moved. No listing, no summarising — one image doing all the work.',
+    'BRAGGABLE UNDERCUT: give them something that genuinely sounds impressive, then undercut it in the same breath. They should want to post it precisely because it flatters and teases at once.',
+  ];
+  if (hasRepeat) {
+    angles.push('THE RETURN: this path comes back to a city they already lived in. That loop is the joke — land it once, dryly, without also explaining it. A rhetorical question works well here.');
+    angles.push('THE RETURN: they went back somewhere. Treat leaving-and-returning as the whole story and say what it reveals about them.');
+  }
+  if (hasYears) {
+    angles.push('A REAL NUMBER: make one duration from the <counts> block the punchline — a stay far shorter than the rest, or a very long one. State it plainly and let the number do the work. Do not invent arithmetic on top of it.');
+  }
+  return angles[Math.floor(Math.random() * angles.length)];
+}
+
 async function generateBlend({ handle, path, years }) {
   const yearsLine = years.some((y) => y != null)
     ? path.map((city, i) => `${city}${years[i] != null ? ` (${years[i]}y)` : ''}`).join(' -> ')
@@ -308,7 +345,12 @@ years per stop: ${yearsLine}
 These counts are already worked out for you. Use them exactly as given and never count anything yourself — note that the number of moves is always one fewer than the number of cities, which is the mistake to avoid:
 <counts>
 ${pathFacts(path, years)}
-</counts>`;
+</counts>
+
+Your assigned angle for THIS card. Commit to it rather than hedging toward a safer general-purpose line, and do not try to combine it with the others:
+<angle>
+${angleFor(path, years)}
+</angle>`;
 
   const attempt = async (extraNudge) => {
     const requestBody = {
@@ -377,6 +419,10 @@ ${pathFacts(path, years)}
   const score = (candidate) => {
     if (!candidate) return [];
     const problems = lineFaults(candidate.line, years.some((y) => y != null));
+    const bare = String(candidate.identity).toLowerCase().replace(/^the\s+/, '');
+    if (bare.length > 20 && !bare.includes(' ')) {
+      problems.push(`The identity "${candidate.identity}" is ${bare.length} letters long. Nobody reads that as a word, and it does not fit the card. Keep the blend under about 18 letters by using shorter fragments of each city.`);
+    }
     if (!looksLikeDemonym(candidate.identity, path[path.length - 1])) {
       problems.push(`The identity "${candidate.identity}" doesn't work: it must be a real demonym (ending -ian, -ese, -er, -ino, -ois, -ite) AND must audibly contain ${path[path.length - 1]}, where they live now. A single city's own demonym, or two place names fused without a demonym ending, both skip the joke.`);
     }

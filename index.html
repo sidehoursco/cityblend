@@ -18,7 +18,11 @@
          still shows something sensible if JS fails. data-example on the card
          records which one was shown, ready for conversion-by-example analytics
          once the aggregate tool exists. -->
-    <section class="cardwrap" aria-label="example card">
+    <!-- The caption exists because a tester tried to tap and edit this card,
+         assuming it was the input. Nothing said it was an example, and the
+         card is the most interactive-looking thing on the page. -->
+    <section class="cardwrap cardwrap--example" aria-label="example card">
+      <p class="example-caption">an example — yours below</p>
       <div class="card" id="example-card" style="--n:2; --line:#00A9B8">
         <div class="card__inner">
           <div class="c-top">
@@ -42,8 +46,11 @@
 
     <section id="form-section" class="form-section" hidden>
       <form id="blend-form" novalidate>
+        <!-- Was labelled "handle", which a non-native-speaking tester didn't
+             understand at all. "your username" is plainer, and the hint says
+             what it's for so nobody has to guess why it's being asked. -->
         <div class="field">
-          <label for="handle">handle</label>
+          <label for="handle">your username <span class="hint">— shown on the card</span></label>
           <!-- "@" is a persistent UI element, not typed text — the input's own
                value never includes it, so the data stored is just "sofia",
                not "@sofia". Display re-adds "@" wherever the handle is shown. -->
@@ -120,10 +127,14 @@
     </footer>
   </main>
 
+  <!-- The years box says "yrs (opt.)" because a tester filled every one in,
+       assuming they were required. Nothing marked them optional — the word
+       "optional" on the section label above refers to the stops themselves,
+       which is a different question. -->
   <template id="between-city-row-template">
     <div class="between-city-row">
       <input type="text" class="between-city-input" maxlength="40" placeholder="a city in between">
-      <input type="number" class="between-city-years" placeholder="years" min="0" max="99">
+      <input type="number" class="between-city-years" placeholder="yrs (opt.)" min="0" max="99">
       <button type="button" class="remove-city-btn" aria-label="remove city">×</button>
     </div>
   </template>

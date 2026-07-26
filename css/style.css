@@ -80,6 +80,28 @@ body {
   display: none;
 }
 
+/* The example card is deliberately smaller than a result card. At the full
+   340px it stands 604px tall, which — under the hero — pushed "make yours"
+   off a 812px phone screen entirely, so nothing on the first screen told
+   anyone there was a next step. A tester stalled here, tried tapping the
+   card as if it were the form, and only found the button by chance. */
+/* 272px keeps the whole CTA above the fold on a 375x812 phone (measured, not
+   guessed — at 292px the button's last 7px fell below it). Result cards keep
+   the full 340px; only this preview shrinks. */
+.cardwrap--example .card {
+  max-width: 272px;
+}
+
+.example-caption {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
 /* ============================================================
    The card — "Night Line"
    Geometry: cqw units ONLY. 9:16 is locked so 1cqh == 1.7778cqw,
@@ -171,6 +193,11 @@ body {
   opacity: 0.85;
 }
 
+/* overflow-wrap is load-bearing, not defensive: the identity is a single
+   invented word, so it has no spaces to break at. "the moskvetersburger"
+   ran off the edge and was silently clipped by .card's overflow:hidden —
+   the card showed "the moskvetersburge". Blends can legitimately get long,
+   so it has to be able to break mid-word. */
 .c-identity {
   font-size: calc(11.5cqw - var(--over) * 0.28cqw);
   line-height: 0.92;
@@ -178,6 +205,7 @@ body {
   font-weight: 700;
   margin: 0 0 calc(5cqw - var(--over) * 0.3cqw);
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .c-line {
