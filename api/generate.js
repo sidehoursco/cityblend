@@ -58,7 +58,15 @@ EXAMPLES — study the variety of form as much as the content. Each is short, ea
 
 Think silently — no reasoning, no discarded drafts, no commentary in your reply.
 
-Final check: does the identity blend two cities; is the line short; does it say something not already on the card; would it fit someone else's path unchanged; does it assert anything about a place you wouldn't bet money on; does it assume a gender.
+FINAL CHECK — go through these in order and fix anything that fails. Do not skip this; the four hard ones below have all slipped through before.
+1. Does the identity blend two cities?
+2. Is the line about 14 words or fewer, naming at most two cities?
+3. Does it say something that isn't already printed on the card?
+4. Would it fit a different person's path unchanged? If yes, start again.
+5. HARD: does it contain he, she, his, her, him, or otherwise assume a gender? Rewrite if so — you cannot know this.
+6. HARD: does it say or imply which of two places is warmer, colder, further or nearer, what direction one is from another, or which sea, coast or body of water somewhere sits on? Cut it — these are the claims you get wrong.
+7. HARD: is any number in it correct — counted stops, counted moves, years? Recount against the path.
+8. HARD: could it read as saying their life amounted to nothing? Rewrite.
 
 Respond with ONLY a JSON object, no markdown, no code fences, no explanation, exactly this shape:
 {"identity": "the ___", "line": "___"}`;
