@@ -183,7 +183,10 @@ years per stop: ${yearsLine}
 
   const requestBody = {
     model: MODEL,
-    max_tokens: 200,
+    // Was 200, which truncated mid-JSON when the model emitted any preamble —
+    // producing repeatable "unparseable output" on specific paths. This is a
+    // ceiling, not a spend: real replies are ~40 tokens.
+    max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
   };
@@ -227,7 +230,7 @@ years per stop: ${yearsLine}
     }
     console.error('model JSON missing identity/line:', text);
   } catch (err) {
-    console.error('unparseable model output:', text);
+    console.error('unparseable model output:', JSON.stringify({ stop_reason: json.stop_reason, text }));
   }
   return { identity: 'the unblended', line: 'this one confused even the model — try again' };
 }
