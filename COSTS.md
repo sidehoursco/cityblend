@@ -27,6 +27,17 @@ One card = one API call. The system prompt is ~2,076 tokens (it carries the voic
 | Haiku 4.5 (current) | $0.0023 | $2.32 | $23.23 | ~2,300 cards |
 | Sonnet | $0.0070 | $6.97 | $69.69 | ~765 cards |
 
+**Correction: the per-card figures above are the no-retry case.** The generator now retries up to twice when output trips a decidable fault (gendered pronoun, invented duration, continent claim, non-blended or rude identity), and each retry is another billed call. So a card costs between 1x and 3x the figure above. Most cards don't retry, but the ceiling is what matters for budgeting.
+
+**Your actual worst-case exposure**, with `GLOBAL_DAILY_LIMIT` at its default of 500 and no override set in Vercel:
+
+| | Per day | Per month if saturated every day |
+|---|---|---|
+| 500 generations, no retries | $1.16 | ~$35 |
+| 500 generations, all retrying twice | $3.48 | ~$105 |
+
+Realistically, at 50 generations/day it's $0.12–$0.35/day, and the €5.33 of credit covers roughly six weeks at that rate. The daily cap is the thing that makes the worst case knowable at all — it's the reason a bad day costs single-digit dollars rather than being unbounded.
+
 Two things worth knowing before assuming Sonnet is expensive:
 
 - **Prompt caching.** The system prompt is byte-identical on every call, which is the ideal case for it — cached input reads are billed at a large discount, so most of the per-card cost above is avoidable. Worth wiring up before ruling Sonnet out on price.
