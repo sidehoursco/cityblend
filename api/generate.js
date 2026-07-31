@@ -549,8 +549,11 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'rate limit check failed' });
   }
 
+  // Wording matters here more than anywhere else in the app: this fires
+  // precisely when the thing is at its most popular, so it should read as
+  // demand rather than as the app being broken or cheap.
   if (limits.globalLimited) {
-    return res.status(429).json({ error: 'cityblend hit its daily limit — try again tomorrow', remaining: 0, limit: limits.limit });
+    return res.status(429).json({ error: 'too many people are making cards right now — try again tomorrow', remaining: 0, limit: limits.limit });
   }
   if (limits.ipLimited) {
     return res.status(429).json({ error: 'you\'ve hit the hourly limit — try again later', remaining: 0, limit: limits.limit });
