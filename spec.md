@@ -166,6 +166,14 @@ From this log, also track: distribution of path length (validates whether the 8-
 - Track conversion by which example card a visitor saw, once the aggregate log exists — `#example-card` already carries a stable `data-example` id for exactly this.
 - Later/v2 idea, not scoped: Instagram gives no way for someone who taps a friend's Story to land on the sender's own card — no referral-personalization path exists without a manually-added link sticker per share.
 
+**Testing vs production**
+
+`cityblend.app` is the live site; `cityblend.vercel.app` serves the same deployment and is the testing URL. They are the same code — the difference is enforced server-side by host:
+
+- **Rate limits are namespaced by host.** Testing no longer consumes the allowance real visitors get (it used to: the key was `rl:ip:<ip>:<hour>` with no host in it). The test host uses `PREVIEW_HOURLY_LIMIT` (default 30), production uses `HOURLY_LIMIT`.
+- **The global daily cap stays shared on purpose.** It exists to cap spend, not to be fair between hosts, and a test generation costs exactly what a real one does. Sharing it means no amount of testing — or of a stranger finding the `.vercel.app` URL — can run a bill past the existing ceiling.
+- **When analytics and the content log are built, exclude non-production hosts** using the same `isProductionHost()` check, so testing never shows up as real demand. This is the whole point of the split and is easy to forget.
+
 **Launch checklist**
 
 - `HOURLY_LIMIT` is currently set to 30 in Vercel (Production+Preview) for pre-launch testing — the real limit in code defaults to 3. **Must revert (delete the env var, or set it to 3) before any public launch/seeding.**
