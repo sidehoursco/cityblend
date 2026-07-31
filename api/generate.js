@@ -501,7 +501,12 @@ ${angleFor(path, years)}
   };
 
   let problems = score(out);
-  for (let round = 0; round < 2 && out && problems.length; round += 1) {
+  // One retry, not two. Cutting the second halves the worst-case cost per card
+  // (3 billed calls -> 2) and the evidence says it was barely earning its keep:
+  // when a first retry failed to fix a fault, a second almost never did either
+  // — the Moscow/Kyiv blend failed all three attempts. Retries only cost money
+  // when they actually fire, so the typical card is unaffected either way.
+  for (let round = 0; round < 1 && out && problems.length; round += 1) {
     console.error('output faults, retrying:', JSON.stringify({ round, identity: out.identity, line: out.line, problems }));
     const retry = await attempt(
       `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
