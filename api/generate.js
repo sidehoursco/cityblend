@@ -17,7 +17,8 @@ You will get a handle and a path of cities in chronological order (birth city fi
 Produce exactly two things.
 
 1. "identity" — a real-sounding demonym, in the style of Bostonian, Parisian, Milanese, Neapolitan, built by BLENDING TWO DIFFERENT CITIES: a lead fragment of one onto the demonym-suffix of the most significant one (usually the current city, or where they spent the most years). Prefix with "the ".
-   Both cities must be audible in it. Good: "the moscelonian" (Moscow + Barcelona), "the valcelonian" (Valladolid + Barcelona), "the osalinner" (Osaka + Berliner). One city's plain demonym on its own misses the joke the app exists to make — if a blend sounds clumsy, change the fragment length or blend from a different city on the path. Sole exception: a short non-demonym phrase when a path is so trivially short that this is itself the joke, e.g. "barely qualifies" — that form takes no "the ".
+   Both cities must be audible in it. Good: "the moscelonian" (Moscow + Barcelona), "the valcelonian" (Valladolid + Barcelona), "the osalinner" (Osaka + Berliner).
+   It must also be SAYABLE OUT LOUD on sight. A native speaker stumbled over "the torontondino", "the torescondian" and "the torontondidian" — all technically valid blends, all a mouthful. Aim for three or four syllables, avoid stacking consonants at the seam, and don't repeat a syllable that already appears earlier in the word ("toron-tondi-dian"). If you can't say it fluently on the first try, shorten the fragment you're blending from. One city's plain demonym on its own misses the joke the app exists to make — if a blend sounds clumsy, change the fragment length or blend from a different city on the path. Sole exception: a short non-demonym phrase when a path is so trivially short that this is itself the joke, e.g. "barely qualifies" — that form takes no "the ".
 
 2. "line" — one short, sharp, lowercase sentence about the person.
 
@@ -46,7 +47,7 @@ VARY THE FORM — cards that all sound structurally alike are not shareable. Sta
 
 Never assume the person's gender — a handle tells you nothing, and getting it wrong on someone's own card is worse than any joke is good.
 
-Stay away from politics, war, borders as conflict, occupation, dictatorships and national grievance entirely — even by implication, even as a light aside. Some paths connect cities whose countries are at war or have a bitter history, and a person listing where they have lived is often exactly the person that history happened to; they may have left because of it. Joke about the person's restlessness or a city's traffic, never about the conflict. If the only angle you can find for a path is political, drop the angle and write about something ordinary instead.
+Stay away from politics and conflict entirely — ANY war or political situation anywhere, current or historical, not one particular conflict: occupation, borders as conflict, dictatorships, revolutions, sanctions, colonial history, migration politics and national grievance all included — even by implication, even as a light aside. Some paths connect cities whose countries are at war or have a bitter history, and a person listing where they have lived is often exactly the person that history happened to; they may have left because of it. Joke about the person's restlessness or a city's traffic, never about the conflict. If the only angle you can find for a path is political, drop the angle and write about something ordinary instead.
 
 If a "city" clearly isn't a real place, say so dryly rather than playing along — stay in voice, don't be preachy.
 
@@ -205,8 +206,13 @@ function lineFaults(line, hasYears) {
   // outright: a Cairo/Rome/Amsterdam/Lisbon path got called three continents
   // when it is two, and unlike stop counts there's nothing in <counts> to check
   // against without shipping a country-to-continent dataset.
-  if (/\bcontinents?\b/i.test(line)) {
-    faults.push('It mentioned continents. You miscount these and nothing verifies it — drop the continent reference entirely.');
+  // Naming a continent is the same error as counting them, and it slipped past
+  // a check that only looked for the word "continent": a Toronto -> Chicago ->
+  // Puerto Escondido path was twice described as leaving North America, when
+  // all three cities are in it. Mexico being North America is exactly the kind
+  // of thing the model gets wrong and a reader spots instantly.
+  if (/\bcontinents?\b|\b(north|south|latin)[\s-]+america\b|\bthe\s+americas\b|\b(europe|africa|asia|oceania|antarctica|eurasia|scandinavia|the\s+balkans|the\s+middle\s+east)\b/i.test(line)) {
+    faults.push('It named or counted a continent or large region. You get these wrong — note that Mexico is in North America, and Turkey spans two continents. Drop the continent or region reference and make the joke about the person or a single city instead.');
   }
   return faults;
 }

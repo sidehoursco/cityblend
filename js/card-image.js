@@ -59,6 +59,28 @@ function breakLongWord(ctx, word, maxWidth) {
   return pieces;
 }
 
+/* The identity is a single invented word, so when it's wider than the card it
+ * has to break mid-word, which strands a letter or two on their own line ("the
+ * leonescondens" / "e"). Shrinking the type instead keeps it as one readable
+ * word — worth it because that word is the punchline and the largest thing on
+ * the card. Returns a multiplier <= 1 to apply to the identity font size.
+ * Measured as a ratio so it holds at any rendered size: availableRatio is the
+ * usable width expressed in multiples of the base font size. */
+function identityFitScale(ctx, identity, availableRatio) {
+  const probeSize = 100;
+  const previous = ctx.font;
+  ctx.font = `700 ${probeSize}px ${FONT_SANS}`;
+  const widest = String(identity)
+    .split(/\s+/)
+    .filter(Boolean)
+    .reduce((max, word) => Math.max(max, ctx.measureText(word).width), 0);
+  ctx.font = previous;
+  if (!widest) return 1;
+  // floor at 0.7: past that the identity stops out-ranking the line below it,
+  // and a mid-word break is the lesser evil.
+  return Math.max(0.7, Math.min(1, (availableRatio * probeSize) / widest));
+}
+
 function wrapLines(ctx, text, maxWidth) {
   const words = String(text).split(/\s+/).filter(Boolean);
   const lines = [];
@@ -131,10 +153,11 @@ function drawCard(ctx, data) {
   // makes the identity + line + route actually fit above the footer, given
   // their real wrapped line counts at each candidate size.
   let over = baseOver;
-  let m, identLines, lineRows, routeBottomY;
+  let m, identSize, identLines, lineRows, routeBottomY;
   for (let step = 0; step <= 40; step += 1) {
     m = metricsFor(over, u);
-    ctx.font = `700 ${m.identSize}px ${FONT_SANS}`;
+    identSize = m.identSize * identityFitScale(ctx, data.identity, innerW / m.identSize);
+    ctx.font = `700 ${identSize}px ${FONT_SANS}`;
     identLines = wrapLines(ctx, data.identity, innerW);
     ctx.font = `500 ${m.lineSize}px ${FONT_SANS}`;
     // mirrors max-width: 27ch in the stylesheet, at this size's own char width
@@ -142,7 +165,7 @@ function drawCard(ctx, data) {
     lineRows = wrapLines(ctx, data.line, lineMaxW);
     const rowH = m.citySize * 1.15;
     let y = padTop + (17 * u) + m.topGap;
-    y += identLines.length * m.identSize * 0.92 + m.identGap;
+    y += identLines.length * identSize * 0.92 + m.identGap;
     y += lineRows.length * m.lineSize * 1.3 + m.lineGap;
     routeBottomY = y + (n - 1) * (rowH + m.rowGap) + rowH;
     if (routeBottomY + minGapAboveFooter <= contentBottom - footerSize * 0.8) break;
@@ -185,12 +208,12 @@ function drawCard(ctx, data) {
   y += badgeD + m.topGap;
 
   /* ---- identity ---- */
-  ctx.font = `700 ${m.identSize}px ${FONT_SANS}`;
+  ctx.font = `700 ${identSize}px ${FONT_SANS}`;
   ctx.fillStyle = TEXT;
   identLines.forEach((line, i) => {
-    ctx.fillText(line, padX, y + m.identSize * 0.8 + i * m.identSize * 0.92);
+    ctx.fillText(line, padX, y + identSize * 0.8 + i * identSize * 0.92);
   });
-  y += identLines.length * m.identSize * 0.92 + m.identGap;
+  y += identLines.length * identSize * 0.92 + m.identGap;
 
   /* ---- the dry line ---- */
   ctx.font = `500 ${m.lineSize}px ${FONT_SANS}`;

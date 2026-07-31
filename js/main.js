@@ -102,6 +102,20 @@ const EXAMPLE_CARDS = [
   },
 ];
 
+/* Mirrors identityFitScale() from card-image.js onto the DOM card, so the
+ * preview and the exported PNG shrink a too-long identity by the same amount.
+ * Without this the on-page card breaks "the leonescondense" mid-word and
+ * strands the final letter on its own line, while the PNG quietly does the
+ * right thing — the preview would then lie about the thing being shared. */
+function setIdentityScale(card, identity, stopCount) {
+  const over = Math.max(0, stopCount - 2);
+  // usable width is 84cqw (100 minus 8cqw padding each side); the base font is
+  // this many cqw, so their ratio is the width available in font-size units
+  const baseFontCqw = Math.max(6, 11.5 - over * 0.28);
+  const probe = document.createElement('canvas').getContext('2d');
+  card.style.setProperty('--ident-scale', identityFitScale(probe, identity, 84 / baseFontCqw).toFixed(3));
+}
+
 function renderExampleCard() {
   const card = document.getElementById('example-card');
   if (!card) return;
@@ -113,6 +127,7 @@ function renderExampleCard() {
   document.getElementById('example-handle').textContent = `@${pick.handle}`;
   document.getElementById('example-count').textContent = String(pick.path.length);
   document.getElementById('example-identity').textContent = pick.identity;
+  setIdentityScale(card, pick.identity, pick.path.length);
   document.getElementById('example-line').textContent = pick.line;
   buildRoute(document.getElementById('example-route'), pick.path, pick.years);
 }
@@ -288,6 +303,7 @@ async function generate(payload) {
 
     resultHandle.textContent = payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`;
     resultIdentity.textContent = data.identity;
+    setIdentityScale(resultCard, data.identity, data.path.length);
     resultLine.textContent = data.line;
     resultCount.textContent = data.path.length;
     buildRoute(resultRoute, data.path, data.years);

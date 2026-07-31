@@ -216,7 +216,10 @@ body {
    the card showed "the moskvetersburge". Blends can legitimately get long,
    so it has to be able to break mid-word. */
 .c-identity {
-  font-size: calc(11.5cqw - var(--over) * 0.28cqw);
+  /* --ident-scale is set by JS (setIdentityScale) using the same measurement
+     the canvas renderer uses, so the on-page card and the exported PNG shrink
+     identically. Defaults to 1 so the card is still correct without JS. */
+  font-size: calc((11.5cqw - var(--over) * 0.28cqw) * var(--ident-scale, 1));
   line-height: 0.92;
   letter-spacing: -0.04em;
   font-weight: 700;
