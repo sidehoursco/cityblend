@@ -624,3 +624,78 @@ input[type="number"]:focus {
   font-size: 0.85rem;
   text-decoration: none;
 }
+
+/* ---- feedback (footer) ---------------------------------------------------
+   Collapsed by default. The point is to exist for the few people who want to
+   say something, not to ask anything of everyone else — so it's a quiet
+   footer word, not a prompt in the share flow where friction costs shares. */
+.footer-link {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.footer-link:hover { color: var(--ink); }
+
+#feedback-panel {
+  margin: 12px auto 0;
+  max-width: 380px;
+  text-align: left;
+}
+
+#feedback-panel[hidden] { display: none; }
+
+#feedback-panel textarea,
+#feedback-panel input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--ink);
+  resize: vertical;
+}
+
+#feedback-panel textarea:focus,
+#feedback-panel input[type="text"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.feedback-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+
+.feedback-status[hidden] { display: none; }
+
+/* The disclosure sits under the submit button: honest, but not an obstacle
+   between someone and the thing they came to do. */
+.disclosure {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin: 10px 0 0;
+}
+
+/* Visible to screen readers only. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

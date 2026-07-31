@@ -464,3 +464,61 @@ renderExampleCard();
 // after the example card is sized, since its height decides where the CTA sits
 syncStickyCta();
 updateCapUI();
+
+/* ---- feedback ------------------------------------------------------------
+   Posts to /api/feedback, which stores it in the Redis instance the app
+   already uses. Deliberately not a link to an external form: sending someone
+   off-site loses most of the people who click, and this is the audience worth
+   hearing from. */
+const feedbackToggle = document.getElementById('feedback-toggle');
+const feedbackPanel = document.getElementById('feedback-panel');
+const feedbackMessage = document.getElementById('feedback-message');
+const feedbackContact = document.getElementById('feedback-contact');
+const feedbackSend = document.getElementById('feedback-send');
+const feedbackStatus = document.getElementById('feedback-status');
+
+feedbackToggle.addEventListener('click', () => {
+  const opening = feedbackPanel.hidden;
+  feedbackPanel.hidden = !opening;
+  if (opening) feedbackMessage.focus();
+});
+
+feedbackSend.addEventListener('click', async () => {
+  const message = feedbackMessage.value.trim();
+  if (!message) {
+    feedbackStatus.textContent = 'write something first.';
+    feedbackStatus.hidden = false;
+    return;
+  }
+
+  feedbackSend.disabled = true;
+  feedbackSend.textContent = 'sending...';
+  feedbackStatus.hidden = true;
+
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, contact: feedbackContact.value.trim() }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      // Collapse the inputs rather than leaving a filled form implying it
+      // might not have sent.
+      feedbackMessage.value = '';
+      feedbackContact.value = '';
+      feedbackMessage.hidden = true;
+      feedbackContact.hidden = true;
+      feedbackSend.hidden = true;
+      feedbackStatus.textContent = 'thank you — genuinely read.';
+    } else {
+      feedbackStatus.textContent = data.error || 'could not send, try again.';
+    }
+  } catch (err) {
+    feedbackStatus.textContent = 'could not send, try again.';
+  } finally {
+    feedbackStatus.hidden = false;
+    feedbackSend.disabled = false;
+    feedbackSend.textContent = 'send';
+  }
+});

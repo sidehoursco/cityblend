@@ -93,6 +93,12 @@
         </div>
 
         <button type="submit" id="submit-btn">generate my blend</button>
+        <!-- Spec calls for one plain disclosure line near the form, since
+             submissions are stored to review and improve the generated lines.
+             Deliberately under the button, not above it: it's honest without
+             being an obstacle placed between someone and the thing they came
+             for. -->
+        <p class="disclosure">what you enter is saved so we can keep making the lines better.</p>
         <p class="form-status" id="form-status" hidden></p>
       </form>
     </section>
@@ -131,7 +137,21 @@
          as social proof once the number is impressive — an honest "9 cards
          made" argues against you. Revisit when the number earns its place;
          this is where the feedback link will go. -->
-    <footer class="site-footer"></footer>
+    <footer class="site-footer">
+      <button type="button" id="feedback-toggle" class="footer-link">feedback</button>
+      <!-- Collapsed by default: present for the minority who want it, invisible
+           to everyone else. Inline rather than a link to a Google Form because
+           sending people off-site loses most of them. -->
+      <div id="feedback-panel" hidden>
+        <label for="feedback-message" class="visually-hidden">your feedback</label>
+        <textarea id="feedback-message" rows="3" maxlength="2000"
+                  placeholder="what's broken, what's missing, what made you laugh"></textarea>
+        <input type="text" id="feedback-contact" maxlength="120"
+               placeholder="email or @handle, only if you want a reply">
+        <button type="button" id="feedback-send" class="secondary-btn">send</button>
+        <p class="feedback-status" id="feedback-status" hidden></p>
+      </div>
+    </footer>
   </main>
 
   <!-- Appears only once the real "make yours" button has scrolled out of

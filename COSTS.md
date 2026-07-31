@@ -12,11 +12,18 @@ Real-money spend on this project. Free-tier infra (Vercel hosting, Upstash Redis
 
 | Date | Item | Amount | Notes |
 |---|---|---|---|
-| 2026-07-22 | Anthropic API credits top-up | €5.33 | console.anthropic.com — powers the /api/generate call, minimum top-up amount, actual usage will be a small fraction of this |
+| 2026-07-22 | Anthropic API credits top-up | €5.33 | console.anthropic.com (account: syuvilova@gmail.com) — powers the /api/generate call, minimum top-up amount |
+| 2026-07-31 | Domain: cityblend.app, first year | $9.99 + tax | Bought through Vercel (at-cost, cheaper than Cloudflare's $14.20 for year one). Renews $15.00/yr, auto-renew on |
+
+## Auto top-up (enabled 2026-07-31)
+
+Anthropic auto-reload is on: when the credit balance falls below **$5**, the card is charged **$5**. This removes the hard wall the prepaid balance used to provide, so the real ceiling on spend is now `GLOBAL_DAILY_LIMIT` in `api/generate.js` — currently the code default of 500 generations/day, i.e. **~$2.32/day worst case**. Lower that env var if a lower ceiling is ever wanted; the credit balance is no longer the brake.
+
+Reference point: **$0.70 spent between 22 and 31 July**, covering all development — many rounds of prompt iteration and hundreds of test generations. Real usage is far below the theoretical worst case.
 
 ## Upcoming (not yet spent)
 
-- Domain registration (cityblend.app) — ~€10-15/yr
+- Domain renewal — $15.00/yr from 2027-07-31
 
 ## Per-card generation cost
 

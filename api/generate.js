@@ -161,6 +161,35 @@ async function redisPipeline(commands) {
   return res.json();
 }
 
+
+/* Every generated card, kept so line quality can be judged in bulk instead of
+ * from whichever screenshots happened to catch someone's eye — the failures you
+ * notice are not the failures that are common. Also the prerequisite for the
+ * comparative badge idea ("more moves than 78% of people").
+ *
+ * Deliberately fire-and-forget: a logging failure must never cost someone their
+ * card, so errors are swallowed and the generation returns regardless.
+ * `host` is stored so test traffic can be filtered out of any analysis, and
+ * `faults` records what the validators caught, which is the only way to learn
+ * how often the retry loop actually fires.
+ *
+ * Retention: LTRIM caps the list, so this is a rolling window rather than a
+ * permanent archive — matches the spec's "don't retain indefinitely by default"
+ * and keeps it inside the Upstash free tier. */
+const CONTENT_LOG_KEY = 'log:generations';
+const CONTENT_LOG_MAX = 2000;
+
+async function logGeneration(entry) {
+  try {
+    await redisPipeline([
+      ['LPUSH', CONTENT_LOG_KEY, JSON.stringify(entry)],
+      ['LTRIM', CONTENT_LOG_KEY, '0', String(CONTENT_LOG_MAX - 1)],
+    ]);
+  } catch (err) {
+    console.error('content log write failed (non-fatal):', err.message);
+  }
+}
+
 /* The live site and the test URL serve the same code from the same deployment,
  * so without this they also shared one rate-limit counter — testing on
  * cityblend.vercel.app silently consumed the allowance real visitors needed.
@@ -500,6 +529,7 @@ ${angleFor(path, years)}
     return problems;
   };
 
+  let retries = 0;
   let problems = score(out);
   // One retry, not two. Cutting the second halves the worst-case cost per card
   // (3 billed calls -> 2) and the evidence says it was barely earning its keep:
@@ -511,6 +541,7 @@ ${angleFor(path, years)}
     const retry = await attempt(
       `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
     );
+    retries += 1;
     if (!retry) break;
     retry.line = tidyLine(retry.line);
     const retryProblems = score(retry);
@@ -522,6 +553,12 @@ ${angleFor(path, years)}
   }
   if (out && problems.length) {
     console.error('shipping with unresolved faults:', JSON.stringify({ identity: out.identity, line: out.line, problems }));
+  }
+  if (out) {
+    // carried out so the content log can record how often validators fire —
+    // the only way to find out which checks are earning their retry
+    out.retries = retries;
+    out.unresolvedFaults = problems.length;
   }
 
   return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
@@ -561,6 +598,19 @@ module.exports = async function handler(req, res) {
 
   try {
     const blend = await generateBlend(validation.data);
+    // fire-and-forget: never let logging cost someone their card
+    logGeneration({
+      at: new Date().toISOString(),
+      host: req.headers.host || null,
+      production: isProductionHost(req.headers.host),
+      handle: validation.data.handle,
+      path: validation.data.path,
+      years: validation.data.years,
+      identity: blend.identity,
+      line: blend.line,
+      retries: blend.retries || 0,
+      unresolvedFaults: blend.unresolvedFaults || 0,
+    });
     return res.status(200).json({
       identity: blend.identity,
       line: blend.line,
