@@ -1,6 +1,14 @@
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 const HOURLY_LIMIT = Number(process.env.HOURLY_LIMIT || 3);
 const GLOBAL_DAILY_LIMIT = Number(process.env.GLOBAL_DAILY_LIMIT || 500);
+// The canonical live host. Anything else (the .vercel.app URL, preview
+// deployments, localhost) counts as testing: separate rate-limit budget, and
+// excluded from stats once analytics exist, so trying things out never shows
+// up as real demand.
+const PRODUCTION_HOST = process.env.PRODUCTION_HOST || 'cityblend.app';
+// Testing allowance, kept apart from the public one so a testing session can be
+// generous without loosening the limit real visitors get.
+const PREVIEW_HOURLY_LIMIT = Number(process.env.PREVIEW_HOURLY_LIMIT || 30);
 const MAX_CITIES = 8;
 const MAX_HANDLE_LEN = 30;
 const MAX_CITY_LEN = 40;
@@ -153,10 +161,28 @@ async function redisPipeline(commands) {
   return res.json();
 }
 
-async function checkAndIncrementRateLimits(ip) {
+/* The live site and the test URL serve the same code from the same deployment,
+ * so without this they also shared one rate-limit counter — testing on
+ * cityblend.vercel.app silently consumed the allowance real visitors needed.
+ * The per-IP counter is now namespaced by which host was used, so the two
+ * can't drain each other, and the test host can carry its own limit.
+ *
+ * The GLOBAL daily counter is deliberately still shared. It exists to cap
+ * spend, not to be fair between hosts, and a testing session costs exactly the
+ * same money as a real one. Keeping it shared means no amount of testing (or
+ * of someone finding the .vercel.app URL) can run up a bill beyond the ceiling
+ * that already exists. */
+function isProductionHost(host) {
+  return String(host || '').toLowerCase().replace(/:\d+$/, '') === PRODUCTION_HOST;
+}
+
+async function checkAndIncrementRateLimits(ip, host) {
+  const production = isProductionHost(host);
+  const limit = production ? HOURLY_LIMIT : PREVIEW_HOURLY_LIMIT;
+  const scope = production ? 'prod' : 'test';
   const hourBucket = Math.floor(Date.now() / (60 * 60 * 1000));
   const dayBucket = Math.floor(Date.now() / (24 * 60 * 60 * 1000));
-  const ipKey = `rl:ip:${ip}:${hourBucket}`;
+  const ipKey = `rl:ip:${scope}:${ip}:${hourBucket}`;
   const globalKey = `rl:global:${dayBucket}`;
 
   const results = await redisPipeline([
@@ -172,8 +198,10 @@ async function checkAndIncrementRateLimits(ip) {
   return {
     ipCount,
     globalCount,
-    remaining: Math.max(0, HOURLY_LIMIT - ipCount),
-    ipLimited: ipCount > HOURLY_LIMIT,
+    limit,
+    production,
+    remaining: Math.max(0, limit - ipCount),
+    ipLimited: ipCount > limit,
     globalLimited: globalCount > GLOBAL_DAILY_LIMIT,
   };
 }
@@ -194,6 +222,25 @@ const DEMONYM_ENDINGS = [
  *     misgenders the person who is about to post it is the worst failure here.
  *   - Invented durations: when no years were submitted there is nothing to
  *     count, yet lines still claim "three years". */
+/* Blends are invented words, so they can accidentally contain a real rude one:
+ * Naples + Amsterdam produced "the napolmerdammer", which has "merda" —
+ * excrement in Italian and Spanish — sitting in the middle of it. Nobody typed
+ * anything rude, the generator just collided two innocent city names. This is
+ * substring matching on purpose (the whole problem is a word hiding INSIDE
+ * another), which is also why the list stays short and unambiguous: longer
+ * fragments would start rejecting innocent blends. */
+const IDENTITY_SUBSTRING_BLOCKLIST = [
+  'merda', 'merde', 'mierda', 'scheiss', 'kurwa', 'puta', 'cazzo', 'coglion',
+  'fuck', 'shit', 'cunt', 'dick', 'piss', 'wank', 'twat', 'anus', 'penis',
+];
+
+function identityFaults(identity) {
+  const word = String(identity).toLowerCase();
+  const hit = IDENTITY_SUBSTRING_BLOCKLIST.find((bad) => word.includes(bad));
+  if (!hit) return [];
+  return [`The identity "${identity}" accidentally contains "${hit}", which is a rude word in at least one language. Blend the cities differently so no such word appears inside it.`];
+}
+
 function lineFaults(line, hasYears) {
   const faults = [];
   if (/\b(he|she|his|her|him|hers|himself|herself)\b/i.test(line)) {
@@ -442,6 +489,7 @@ ${angleFor(path, years)}
   const score = (candidate) => {
     if (!candidate) return [];
     const problems = lineFaults(candidate.line, years.some((y) => y != null));
+    problems.push(...identityFaults(candidate.identity));
     const bare = String(candidate.identity).toLowerCase().replace(/^the\s+/, '');
     if (bare.length > 20 && !bare.includes(' ')) {
       problems.push(`The identity "${candidate.identity}" is ${bare.length} letters long. Nobody reads that as a word, and it does not fit the card. Keep the blend under about 18 letters by using shorter fragments of each city.`);
@@ -490,17 +538,17 @@ module.exports = async function handler(req, res) {
 
   let limits;
   try {
-    limits = await checkAndIncrementRateLimits(ip);
+    limits = await checkAndIncrementRateLimits(ip, req.headers.host);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'rate limit check failed' });
   }
 
   if (limits.globalLimited) {
-    return res.status(429).json({ error: 'cityblend hit its daily limit — try again tomorrow', remaining: 0, limit: HOURLY_LIMIT });
+    return res.status(429).json({ error: 'cityblend hit its daily limit — try again tomorrow', remaining: 0, limit: limits.limit });
   }
   if (limits.ipLimited) {
-    return res.status(429).json({ error: 'you\'ve hit the hourly limit — try again later', remaining: 0, limit: HOURLY_LIMIT });
+    return res.status(429).json({ error: 'you\'ve hit the hourly limit — try again later', remaining: 0, limit: limits.limit });
   }
 
   try {
@@ -513,7 +561,7 @@ module.exports = async function handler(req, res) {
       // than reused client-side because the server truncates and filters.
       years: validation.data.years,
       remaining: limits.remaining,
-      limit: HOURLY_LIMIT,
+      limit: limits.limit,
     });
   } catch (err) {
     console.error(err);

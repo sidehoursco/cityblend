@@ -88,17 +88,21 @@ const EXAMPLE_CARDS = [
     id: 'moscow-london-barcelona',
     handle: 'sofia',
     identity: 'the moscelonian',
-    line: 'ten years in barcelona, still leads with moscow',
+    line: 'spent five years in london learning to queue, moved to barcelona to forget',
     path: ['Moscow', 'London', 'Barcelona'],
     years: [null, 5, 10],
   },
   {
-    id: 'seoul-paris-seoul-montreal',
-    handle: 'min',
-    identity: 'the seoultrealian',
-    line: 'paris was the gap year that lasted forever',
-    path: ['Seoul', 'Paris', 'Seoul', 'Montreal'],
-    years: [null, null, null, null],
+    // The long-path slot: five stops with years, so the rotation shows at least
+    // one card where the transit line itself is the spectacle. The line works
+    // because it picks the single odd detail out of the route — Porto is the
+    // one-year stay among threes and sixes — rather than summarising it.
+    id: 'lima-lisbon',
+    handle: 'nico',
+    identity: 'the limabonese',
+    line: 'spent one year in porto and never mentions it',
+    path: ['Lima', 'Madrid', 'Berlin', 'Porto', 'Lisbon'],
+    years: [null, 3, 6, 1, null],
   },
 ];
 
