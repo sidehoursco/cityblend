@@ -166,6 +166,18 @@ From this log, also track: distribution of path length (validates whether the 8-
 - Track conversion by which example card a visitor saw, once the aggregate log exists — `#example-card` already carries a stable `data-example` id for exactly this.
 - Later/v2 idea, not scoped: Instagram gives no way for someone who taps a friend's Story to land on the sender's own card — no referral-personalization path exists without a manually-added link sticker per share.
 
+**Private stats page**
+
+`https://cityblend.app/api/stats?key=<STATS_KEY>` — not linked from anywhere, `STATS_KEY` lives in Vercel. Shows live card count, today, top cities, path-length spread, retry and fault rates, estimated spend, recent generations and all feedback. Test-host traffic is excluded from the headline numbers and shown faded in the table.
+
+Fails closed: with no `STATS_KEY` set it returns 404 rather than serving, because an endpoint that silently becomes public when a variable goes missing is worse than one that stops working — it displays other people's submissions. Sent `no-store` and `noindex`.
+
+Note: **env vars only apply to deployments created after they are set.** Setting `STATS_KEY` and reloading gives a 404 until something redeploys; that's the fail-closed check doing its job, not a bug.
+
+**Feedback**
+
+Collapsed footer link → one textarea → `POST /api/feedback` → Redis, surfaced on the stats page. Deliberately not an external form link: sending someone off-site loses most of the people who click, needs another account, and looks unfinished. Optional contact field so a reply can be requested without being required.
+
 **Testing vs production**
 
 `cityblend.app` is the live site; `cityblend.vercel.app` serves the same deployment and is the testing URL. They are the same code — the difference is enforced server-side by host:
