@@ -9,6 +9,9 @@
  *
  * Renders HTML rather than JSON because the whole point is to read it — raw
  * JSON in a phone browser is not something anyone will actually do daily.
+ *
+ * POST with ?reset=all|generations|feedback wipes the logs — used to clear
+ * development noise so the first real numbers start from zero.
  */
 
 const CONTENT_LOG_KEY = 'log:generations';
@@ -55,6 +58,32 @@ module.exports = async function handler(req, res) {
   const provided = (req.query && req.query.key) || '';
   if (!key || provided !== key) {
     return res.status(404).send('Not found');
+  }
+
+  /* Wiping the logs, for clearing development noise before launch so the
+   * first real numbers aren't polluted by our own testing.
+   *
+   * POST-only and requires an explicit ?reset= value. A destructive action on
+   * GET is a trap: prefetchers, link previews and "open all my tabs" would
+   * fire it, and the URL carries the key, so it would only take one shared
+   * screenshot of the address bar to lose the data. */
+  if (req.method === 'POST') {
+    const target = (req.query && req.query.reset) || '';
+    const keys = target === 'all' ? [CONTENT_LOG_KEY, FEEDBACK_KEY]
+      : target === 'generations' ? [CONTENT_LOG_KEY]
+        : target === 'feedback' ? [FEEDBACK_KEY]
+          : null;
+    if (!keys) {
+      return res.status(400).json({ error: 'reset must be one of: all, generations, feedback' });
+    }
+    try {
+      const before = await redisPipeline(keys.map((k) => ['LLEN', k]));
+      const removed = before.map((r, i) => `${keys[i]}: ${Number(r?.result || 0)}`);
+      await redisPipeline(keys.map((k) => ['DEL', k]));
+      return res.status(200).json({ ok: true, cleared: removed });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   let generations = [];
