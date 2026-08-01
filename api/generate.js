@@ -13,8 +13,52 @@ const MAX_CITIES = 8;
 const MAX_HANDLE_LEN = 30;
 const MAX_CITY_LEN = 40;
 
-// Starter list only — expand with a fuller moderation wordlist before real traffic.
-const BLOCKLIST = ['fuck', 'shit', 'nigger', 'faggot', 'retard'];
+/* Input moderation, in two tiers, because one matching strategy cannot serve
+ * both jobs.
+ *
+ * The actual risk being managed: someone types a slur as a "city", it gets
+ * printed large on a card carrying cityblend.app, and that gets shared. So
+ * slurs are the priority; mild profanity is barely a problem by comparison
+ * (a card containing "shit" is not a reputational event).
+ *
+ * TIER 1 — SLURS, matched as a SUBSTRING of aggressively normalised text, so
+ * "n1gger", "f a g g o t" and "F-A-G" are all caught. Safe to match loosely
+ * because these strings essentially never occur inside real place names.
+ *
+ * TIER 2 — ABUSE/PROFANITY, matched as WHOLE WORDS only. This is the
+ * important distinction: substring-matching these would reject real places.
+ * Scunthorpe, Penistone, Bitche (France), Fugging (Austria), Cockermouth,
+ * Assen and Sussex are all genuine, and a moderation list that rejects
+ * someone's actual hometown is its own kind of failure.
+ *
+ * This is not, and cannot be, exhaustive — the aim is to make casual abuse
+ * not worth the effort, not to win an arms race. Anything that slips through
+ * lands in the content log, where it can be seen and the list extended. */
+const SLUR_SUBSTRINGS = [
+  'nigger', 'nigga', 'faggot', 'fagot', 'chink', 'gook', 'kike', 'spic',
+  'wetback', 'towelhead', 'raghead', 'paki', 'coon', 'tranny', 'shemale',
+  'retard', 'mongoloid', 'kaffir', 'gypo', 'zhid', 'sudaca', 'panchito',
+];
+
+const ABUSE_WORDS = [
+  'fuck', 'fucking', 'shit', 'cunt', 'bitch', 'whore', 'slut', 'rape',
+  'rapist', 'nazi', 'hitler', 'isis', 'pedo', 'pedophile', 'paedophile',
+  'incest', 'bestiality', 'puta', 'polla', 'coño', 'cabron', 'maricon',
+];
+
+/* Collapses the tricks people use to slip a word past a filter: letter/number
+ * swaps, and spacing or punctuation between letters. Everything non-alphabetic
+ * is dropped, so "f.u.c.k" and "f u c k" both become "fuck". */
+function normalizeForSlurs(text) {
+  return String(text).toLowerCase()
+    .replace(/[4@]/g, 'a')
+    .replace(/[3]/g, 'e')
+    .replace(/[1!|]/g, 'i')
+    .replace(/[0]/g, 'o')
+    .replace(/[$5]/g, 's')
+    .replace(/[7]/g, 't')
+    .replace(/[^a-z]/g, '');
+}
 
 const SYSTEM_PROMPT = `You are the joke-writer behind cityblend, an app where people list the cities they've lived in and get a short, shareable "identity" blurb.
 
@@ -89,9 +133,33 @@ FINAL CHECK — go through these in order and fix anything that fails. Do not sk
 Respond with ONLY a JSON object, no markdown, no code fences, no explanation, exactly this shape:
 {"identity": "the ___", "line": "___"}`;
 
+/* Letter-for-number swaps only — no stripping of spaces or punctuation, so a
+ * word keeps its boundaries. That's what lets "sh1t" be caught as a word while
+ * "Shitterton" (a real Dorset hamlet) stays a different word entirely. */
+function deleet(word) {
+  return word
+    .replace(/[4@]/g, 'a').replace(/[3]/g, 'e').replace(/[1!|]/g, 'i')
+    .replace(/[0]/g, 'o').replace(/[$5]/g, 's').replace(/[7]/g, 't');
+}
+
 function containsBlockedWord(text) {
-  const lower = text.toLowerCase();
-  return BLOCKLIST.some((word) => lower.includes(word));
+  const collapsed = normalizeForSlurs(text);
+  if (SLUR_SUBSTRINGS.some((slur) => collapsed.includes(slur))) return true;
+
+  const lower = String(text).toLowerCase();
+
+  // Whole-word pass, de-leeted per word so boundaries survive.
+  const words = lower.split(/[^\p{L}\p{N}@$!|]+/u).filter(Boolean).map(deleet);
+  if (words.some((word) => ABUSE_WORDS.includes(word))) return true;
+
+  // "f.u.c.k" / "f u c k": single letters separated by punctuation or spaces is
+  // never how anyone writes a place name, so runs of it are collapsed and
+  // re-checked. Targeted at that one pattern rather than stripping all
+  // separators, which would drag real place names back into substring matching.
+  const spacedOut = lower.replace(/\b(?:\p{L}[^\p{L}\p{N}]+){2,}\p{L}\b/gu,
+    (run) => run.replace(/[^\p{L}]/gu, ''));
+  const collapsedWords = spacedOut.split(/[^\p{L}\p{N}@$!|]+/u).filter(Boolean).map(deleet);
+  return collapsedWords.some((word) => ABUSE_WORDS.includes(word));
 }
 
 function truncate(str, max) {

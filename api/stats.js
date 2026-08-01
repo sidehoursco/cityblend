@@ -69,18 +69,32 @@ module.exports = async function handler(req, res) {
    * screenshot of the address bar to lose the data. */
   if (req.method === 'POST') {
     const target = (req.query && req.query.reset) || '';
-    const keys = target === 'all' ? [CONTENT_LOG_KEY, FEEDBACK_KEY]
+    // Counter keys are enumerated rather than wildcard-scanned: the set is
+    // small and known, and a SCAN-and-delete over a shared Redis is a blunter
+    // instrument than this needs.
+    const today = new Date().toISOString().slice(0, 10);
+    const counterKeys = [];
+    ['prod', 'test'].forEach((scope) => {
+      ['view', 'form_open', 'share', 'download', 'regenerate'].forEach((type) => {
+        counterKeys.push(`stat:${scope}:${type}:total`);
+        counterKeys.push(`stat:${scope}:${type}:${today}`);
+      });
+    });
+
+    const keys = target === 'all' ? [CONTENT_LOG_KEY, FEEDBACK_KEY, ...counterKeys]
       : target === 'generations' ? [CONTENT_LOG_KEY]
         : target === 'feedback' ? [FEEDBACK_KEY]
-          : null;
+          : target === 'counters' ? counterKeys
+            : null;
     if (!keys) {
-      return res.status(400).json({ error: 'reset must be one of: all, generations, feedback' });
+      return res.status(400).json({ error: 'reset must be one of: all, generations, feedback, counters' });
     }
     try {
-      const before = await redisPipeline(keys.map((k) => ['LLEN', k]));
-      const removed = before.map((r, i) => `${keys[i]}: ${Number(r?.result || 0)}`);
+      const listKeys = keys.filter((k) => k.startsWith('log:'));
+      const before = listKeys.length ? await redisPipeline(listKeys.map((k) => ['LLEN', k])) : [];
+      const removed = before.map((r, i) => `${listKeys[i]}: ${Number(r?.result || 0)}`);
       await redisPipeline(keys.map((k) => ['DEL', k]));
-      return res.status(200).json({ ok: true, cleared: removed });
+      return res.status(200).json({ ok: true, cleared: removed, keysDeleted: keys.length });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -90,17 +104,26 @@ module.exports = async function handler(req, res) {
   let feedback = [];
   let totalGenerations = 0;
   let totalFeedback = 0;
+  const counters = { views: 0, formOpens: 0, shares: 0, downloads: 0 };
   try {
     const results = await redisPipeline([
       ['LRANGE', CONTENT_LOG_KEY, '0', String(SHOW_GENERATIONS - 1)],
       ['LRANGE', FEEDBACK_KEY, '0', String(SHOW_FEEDBACK - 1)],
       ['LLEN', CONTENT_LOG_KEY],
       ['LLEN', FEEDBACK_KEY],
+      ['GET', 'stat:prod:view:total'],
+      ['GET', 'stat:prod:form_open:total'],
+      ['GET', 'stat:prod:share:total'],
+      ['GET', 'stat:prod:download:total'],
     ]);
     generations = parseList(results[0]);
     feedback = parseList(results[1]);
     totalGenerations = Number(results[2]?.result || 0);
     totalFeedback = Number(results[3]?.result || 0);
+    counters.views = Number(results[4]?.result || 0);
+    counters.formOpens = Number(results[5]?.result || 0);
+    counters.shares = Number(results[6]?.result || 0);
+    counters.downloads = Number(results[7]?.result || 0);
   } catch (err) {
     return res.status(500).send(`stats unavailable: ${esc(err.message)}`);
   }
@@ -113,6 +136,13 @@ module.exports = async function handler(req, res) {
   // Rough spend indicator: ~$0.0023 per API call, and a retry is a second call.
   const calls = live.reduce((sum, g) => sum + 1 + (g.retries || 0), 0);
   const estSpend = (calls * 0.002323).toFixed(2);
+
+  /* The funnel is the whole point of v1: the question is not how many cards
+   * were made but whether anyone shared one without being asked. Percentages
+   * are against the step above, so each number answers "how many of the people
+   * who got this far went on to the next thing". */
+  const saved = counters.shares + counters.downloads;
+  const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—');
 
   const cityCounts = {};
   live.forEach((g) => (g.path || []).forEach((c) => {
@@ -173,9 +203,17 @@ module.exports = async function handler(req, res) {
 <h1>cityblend stats</h1>
 <p class="sub">Live traffic only in the numbers below — ${esc(String(generations.length - live.length))} test generations are excluded (shown faded in the table). Log holds ${totalGenerations} entries, newest first.</p>
 
+<h2>Funnel</h2>
 <div class="cards">
-  <div class="stat"><b>${live.length}</b><span>live cards</span></div>
-  <div class="stat"><b>${liveToday.length}</b><span>today</span></div>
+  <div class="stat"><b>${counters.views}</b><span>visits</span></div>
+  <div class="stat"><b>${counters.formOpens}</b><span>opened form · ${pct(counters.formOpens, counters.views)}</span></div>
+  <div class="stat"><b>${live.length}</b><span>generated · ${pct(live.length, counters.formOpens)}</span></div>
+  <div class="stat"><b>${saved}</b><span>shared or saved · ${pct(saved, live.length)}</span></div>
+</div>
+
+<h2>Health</h2>
+<div class="cards">
+  <div class="stat"><b>${liveToday.length}</b><span>cards today</span></div>
   <div class="stat"><b>${totalFeedback}</b><span>feedback</span></div>
   <div class="stat"><b>${withRetries}</b><span>needed a retry</span></div>
   <div class="stat"><b>${withFaults}</b><span>shipped flawed</span></div>

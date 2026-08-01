@@ -138,11 +138,32 @@ function renderExampleCard() {
 
 let lastPayload = null;
 
+/* Fire-and-forget funnel counters. sendBeacon where available so the request
+ * survives the page being backgrounded — which is exactly what happens on the
+ * event that matters most, since navigator.share() hands control to another
+ * app mid-flight and a normal fetch can be cancelled in the handover. */
+function track(type) {
+  const body = JSON.stringify({ type });
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/event', new Blob([body], { type: 'application/json' }));
+      return;
+    }
+    fetch('/api/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+  } catch (_) { /* analytics must never break the app */ }
+}
+
 const stickyCta = document.getElementById('sticky-cta');
 const stickyMakeYoursBtn = document.getElementById('sticky-make-yours');
 let formRevealed = false;
 
 function revealForm() {
+  if (!formRevealed) track('form_open');
   formSection.hidden = false;
   makeYoursBtn.hidden = true;
   formRevealed = true;
@@ -426,6 +447,8 @@ async function saveCard() {
   if (CAN_SHARE_FILES) {
     try {
       await navigator.share({ files: [file] });
+      // only after the sheet resolves — firing before it would count dismissals
+      track('share');
       nudgeToInstagram();
       return;
     } catch (err) {
@@ -447,6 +470,7 @@ async function saveCard() {
   a.remove();
   // NOT revoked here: revoking synchronously after click cancels the download.
   // The URL is released on the next generation instead.
+  track('download');
   nudgeToInstagram();
 }
 
@@ -461,6 +485,7 @@ function nudgeToInstagram() {
 saveBtn.addEventListener('click', saveCard);
 
 renderExampleCard();
+track('view');
 // after the example card is sized, since its height decides where the CTA sits
 syncStickyCta();
 updateCapUI();
