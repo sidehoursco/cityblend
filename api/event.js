@@ -48,12 +48,23 @@ module.exports = async function handler(req, res) {
   const scope = host === PRODUCTION_HOST ? 'prod' : 'test';
   const day = new Date().toISOString().slice(0, 10);
 
+  const commands = [
+    ['INCR', `stat:${scope}:${type}:total`],
+    ['INCR', `stat:${scope}:${type}:${day}`],
+    ['EXPIRE', `stat:${scope}:${type}:${day}`, String(DAY_TTL)],
+  ];
+
+  /* Referrer host, counted in a hash rather than as a key per source so the
+   * keyspace can't be grown by anyone sending junk. Sanitised to a short
+   * hostname; anything that doesn't look like one is bucketed as "other". */
+  if (type === 'view') {
+    const raw = String(body.ref || 'direct').toLowerCase().slice(0, 80);
+    const ref = /^[a-z0-9.-]+$/.test(raw) ? raw.replace(/^www\./, '') : 'other';
+    commands.push(['HINCRBY', `stat:${scope}:referrers`, ref, '1']);
+  }
+
   try {
-    await redisPipeline([
-      ['INCR', `stat:${scope}:${type}:total`],
-      ['INCR', `stat:${scope}:${type}:${day}`],
-      ['EXPIRE', `stat:${scope}:${type}:${day}`, String(DAY_TTL)],
-    ]);
+    await redisPipeline(commands);
   } catch (err) {
     // Never let a counter failure surface to someone mid-share.
     console.error('event write failed (non-fatal):', err.message);

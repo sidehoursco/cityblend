@@ -105,6 +105,7 @@ module.exports = async function handler(req, res) {
   let totalGenerations = 0;
   let totalFeedback = 0;
   const counters = { views: 0, formOpens: 0, shares: 0, downloads: 0 };
+  const referrers = {};
   try {
     const results = await redisPipeline([
       ['LRANGE', CONTENT_LOG_KEY, '0', String(SHOW_GENERATIONS - 1)],
@@ -115,6 +116,7 @@ module.exports = async function handler(req, res) {
       ['GET', 'stat:prod:form_open:total'],
       ['GET', 'stat:prod:share:total'],
       ['GET', 'stat:prod:download:total'],
+      ['HGETALL', 'stat:prod:referrers'],
     ]);
     generations = parseList(results[0]);
     feedback = parseList(results[1]);
@@ -124,6 +126,9 @@ module.exports = async function handler(req, res) {
     counters.formOpens = Number(results[5]?.result || 0);
     counters.shares = Number(results[6]?.result || 0);
     counters.downloads = Number(results[7]?.result || 0);
+    // HGETALL comes back as a flat [field, value, field, value, ...] array
+    const flat = Array.isArray(results[8]?.result) ? results[8].result : [];
+    for (let i = 0; i < flat.length; i += 2) referrers[flat[i]] = Number(flat[i + 1] || 0);
   } catch (err) {
     return res.status(500).send(`stats unavailable: ${esc(err.message)}`);
   }
@@ -219,6 +224,10 @@ module.exports = async function handler(req, res) {
   <div class="stat"><b>${withFaults}</b><span>shipped flawed</span></div>
   <div class="stat"><b>$${estSpend}</b><span>est. api spend</span></div>
 </div>
+
+<h2>Where they came from</h2>
+<div>${Object.entries(referrers).sort((a, b) => b[1] - a[1]).slice(0, 15)
+  .map(([r, n]) => `<span class="pill">${esc(r)} <b>${n}</b></span>`).join('') || '<span class="empty">nothing yet</span>'}</div>
 
 <h2>Most-entered cities</h2>
 <div>${topCities.map(([c, n]) => `<span class="pill">${esc(c)} <b>${n}</b></span>`).join('') || '<span class="empty">nothing yet</span>'}</div>

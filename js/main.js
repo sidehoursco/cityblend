@@ -142,8 +142,8 @@ let lastPayload = null;
  * survives the page being backgrounded — which is exactly what happens on the
  * event that matters most, since navigator.share() hands control to another
  * app mid-flight and a normal fetch can be cancelled in the handover. */
-function track(type) {
-  const body = JSON.stringify({ type });
+function track(type, extra) {
+  const body = JSON.stringify(Object.assign({ type }, extra || {}));
   try {
     if (navigator.sendBeacon) {
       navigator.sendBeacon('/api/event', new Blob([body], { type: 'application/json' }));
@@ -485,7 +485,13 @@ function nudgeToInstagram() {
 saveBtn.addEventListener('click', saveCard);
 
 renderExampleCard();
-track('view');
+/* Referrer host only — never the full URL, which can carry search terms or
+ * private path segments. This is the number that answers whether cityblend
+ * travelled beyond the people Sofia personally asked. */
+track('view', { ref: (() => {
+  try { return document.referrer ? new URL(document.referrer).hostname : 'direct'; }
+  catch (_) { return 'direct'; }
+})() });
 // after the example card is sized, since its height decides where the CTA sits
 syncStickyCta();
 updateCapUI();
