@@ -152,14 +152,18 @@ function containsBlockedWord(text) {
   const words = lower.split(/[^\p{L}\p{N}@$!|]+/u).filter(Boolean).map(deleet);
   if (words.some((word) => ABUSE_WORDS.includes(word))) return true;
 
-  // "f.u.c.k" / "f u c k": single letters separated by punctuation or spaces is
-  // never how anyone writes a place name, so runs of it are collapsed and
-  // re-checked. Targeted at that one pattern rather than stripping all
-  // separators, which would drag real place names back into substring matching.
-  const spacedOut = lower.replace(/\b(?:\p{L}[^\p{L}\p{N}]+){2,}\p{L}\b/gu,
-    (run) => run.replace(/[^\p{L}]/gu, ''));
-  const collapsedWords = spacedOut.split(/[^\p{L}\p{N}@$!|]+/u).filter(Boolean).map(deleet);
-  return collapsedWords.some((word) => ABUSE_WORDS.includes(word));
+  /* "f.u.c.k" / "f u c k": single letters separated by punctuation or spaces is
+   * never how anyone writes a place name, so each such run is collapsed and
+   * checked. Deliberately a SUBSTRING check, and deliberately only on these
+   * collapsed runs: the run can pick up neighbouring letters (the real input
+   * is "<handle> f.u.c.k <city>", so a one-letter handle merges in and a
+   * whole-word test on "tfuck" finds nothing), while real place names never
+   * enter this path at all and so stay safe from substring matching. */
+  const runs = lower.match(/\b(?:\p{L}[^\p{L}\p{N}]+){2,}\p{L}\b/gu) || [];
+  return runs.some((run) => {
+    const collapsed = deleet(run.replace(/[^\p{L}]/gu, ''));
+    return ABUSE_WORDS.some((word) => collapsed.includes(word));
+  });
 }
 
 function truncate(str, max) {
