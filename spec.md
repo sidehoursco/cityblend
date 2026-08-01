@@ -184,6 +184,14 @@ Verified against realistic **joined** input (`handle + path`, as the server buil
 
 Known cosmetic edge: someone from Scunthorpe gets blends containing "cunt", which trips the *identity* check and burns a retry before shipping anyway. Rare, and it degrades gracefully.
 
+**Known unresolved risk — paths from conflict-affected places**
+
+For a path like Kabul → Hamburg the generator keeps finding the displacement angle ("made the sensible choice", "made it sound like a choice"), because it is the most salient thing about that route. Two rounds of prompt tightening reduced but did not eliminate it, consistent with the pattern throughout this project: prompts do not reliably enforce a constraint the model finds semantically attractive.
+
+Why it matters: a card implying someone's move was an escape, or that leaving was sensible, lands very differently on a person who left under duress than it reads to us — and this audience contains such people.
+
+Launch decision was to ship and watch, because every card is now in the content log and the volume on day one is small and friendly. **If one of these appears in the log, tighten immediately** — the likely fix is code-level (detect the pattern in the output and force a retry) rather than another prompt rule, since prompt rules have now failed twice here.
+
 **Private stats page**
 
 `https://cityblend.app/api/stats?key=<STATS_KEY>` — not linked from anywhere, `STATS_KEY` lives in Vercel. Shows live card count, today, top cities, path-length spread, retry and fault rates, estimated spend, recent generations and all feedback. Test-host traffic is excluded from the headline numbers and shown faded in the table.
