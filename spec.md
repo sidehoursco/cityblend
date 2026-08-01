@@ -166,6 +166,24 @@ From this log, also track: distribution of path length (validates whether the 8-
 - Track conversion by which example card a visitor saw, once the aggregate log exists — `#example-card` already carries a stable `data-example` id for exactly this.
 - Later/v2 idea, not scoped: Instagram gives no way for someone who taps a friend's Story to land on the sender's own card — no referral-personalization path exists without a manually-added link sticker per share.
 
+**Analytics — built in, no third party**
+
+No GoatCounter, Plausible or Vercel Analytics. `/api/event` counts the four funnel steps (`view`, `form_open`, `share`, `download`) plus referrer *host*, and the stats page shows each step as a percentage of the one above. Reasons: it needs no extra account or script, sets no cookie and so needs no consent banner (which would cost conversion on the one page that matters), and the decisive metric — did someone **share** — happens entirely client-side and no page-view tool would have captured it anyway.
+
+`sendBeacon` rather than `fetch`, because `navigator.share()` hands control to another app mid-flight and an ordinary request can be cancelled in the handover — dropping precisely the event that matters most. Referrer is stored as host only, never the full URL, which can carry search terms or private path segments.
+
+**Input moderation**
+
+Two tiers, matched differently, because one strategy can't do both jobs:
+
+- **Slurs** — substring match on aggressively normalised text (letter/number swaps, all separators stripped), so `n1gger` and `f a g g o t` are caught. Safe to match loosely: these strings don't occur inside real place names.
+- **General abuse** — whole words only, de-leeted per word. This distinction is load-bearing: substring-matching these rejects **Scunthorpe, Penistone, Bitche, Fugging, Cockermouth, Assen, Shitterton, Twatt and Condom**, all real places. A filter that refuses someone's actual hometown is its own kind of failure.
+- A separate pass collapses letter-by-letter runs (`f.u.c.k`), substring-checked, since no place name is written that way.
+
+Verified against realistic **joined** input (`handle + path`, as the server builds it) rather than bare tokens — testing tokens alone hid a real bug where a one-letter handle merged into the collapsed run and defeated whole-word matching. Not exhaustive by design: the aim is to make casual abuse not worth the effort, and anything that slips through lands in the content log where the list can be extended.
+
+Known cosmetic edge: someone from Scunthorpe gets blends containing "cunt", which trips the *identity* check and burns a retry before shipping anyway. Rare, and it degrades gracefully.
+
 **Private stats page**
 
 `https://cityblend.app/api/stats?key=<STATS_KEY>` — not linked from anywhere, `STATS_KEY` lives in Vercel. Shows live card count, today, top cities, path-length spread, retry and fault rates, estimated spend, recent generations and all feedback. Test-host traffic is excluded from the headline numbers and shown faded in the table.
