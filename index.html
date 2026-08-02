@@ -16,16 +16,26 @@
   <!-- Link preview. This is what a WhatsApp message or a DM renders when
        someone pastes cityblend.app, which is the main way the domain will
        travel — without it the link shows as bare text and reads like spam.
-       og:image is added separately once a real card image is in the repo;
-       pointing at a missing file would be worse than omitting it. -->
+       Confirmed by testing the bare link on WhatsApp, Telegram and iMessage:
+       Telegram and iMessage both render a text-only card with no image, but
+       WhatsApp's crawler renders NOTHING at all without og:image — no card,
+       just a blue link. og:image is what's missing. Absolute URL, required
+       by the spec (a relative path is not valid here). 1200x630 is the
+       standard OG/Twitter card ratio (1.91:1) every one of these crawlers
+       expects. -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cityblend.app/">
   <meta property="og:title" content="what's your geographical identity?">
   <meta property="og:description" content="Enter the cities you've lived in, get a name and a line that's actually about you.">
   <meta property="og:site_name" content="cityblend">
+  <meta property="og:image" content="https://cityblend.app/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="cityblend — what's your geographical identity?">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="what's your geographical identity?">
   <meta name="twitter:description" content="Enter the cities you've lived in, get a name and a line that's actually about you.">
+  <meta name="twitter:image" content="https://cityblend.app/og-image.jpg">
 
   <link rel="stylesheet" href="css/style.css">
 </head>
