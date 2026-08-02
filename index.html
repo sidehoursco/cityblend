@@ -4,6 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>cityblend — what's your geographical identity?</title>
+  <meta name="description" content="Enter the cities you've lived in and get a name and a line that's actually about you. A shareable card of your geographical identity.">
+
+  <!-- SVG favicon: the card's own transit motif, so a browser tab, the card
+       and the site read as one thing. SVG rather than .ico so it stays crisp
+       at any size and needs no build step or binary asset in the repo. -->
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#0D1014">
+
+  <!-- Link preview. This is what a WhatsApp message or a DM renders when
+       someone pastes cityblend.app, which is the main way the domain will
+       travel — without it the link shows as bare text and reads like spam.
+       og:image is added separately once a real card image is in the repo;
+       pointing at a missing file would be worse than omitting it. -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cityblend.app/">
+  <meta property="og:title" content="what's your geographical identity?">
+  <meta property="og:description" content="Enter the cities you've lived in, get a name and a line that's actually about you.">
+  <meta property="og:site_name" content="cityblend">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="what's your geographical identity?">
+  <meta name="twitter:description" content="Enter the cities you've lived in, get a name and a line that's actually about you.">
+
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
