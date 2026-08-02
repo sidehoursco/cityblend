@@ -23,7 +23,9 @@ const saveBtn = document.getElementById('save-btn');
 const resultImage = document.getElementById('result-image');
 const saveHint = document.getElementById('save-hint');
 const saveFallback = document.getElementById('save-fallback');
+const saveFallbackLead = document.getElementById('save-fallback-lead');
 const saveFallbackSteps = document.getElementById('save-fallback-steps');
+const saveFallbackAlt = document.getElementById('save-fallback-alt');
 const copyLinkBtn = document.getElementById('copy-link-btn');
 
 // Everything the exported PNG needs, kept from the last successful generation.
@@ -193,17 +195,77 @@ const stickyCta = document.getElementById('sticky-cta');
 const stickyMakeYoursBtn = document.getElementById('sticky-make-yours');
 let formRevealed = false;
 
-function revealForm() {
-  if (!formRevealed) track('form_open');
+// silent: used when the form is opened by restoring a URL rather than by
+// someone deciding to start. Counting that as a form-open would double-count
+// one person who simply changed browser mid-flow.
+function revealForm(options) {
+  const silent = options === true;
+  if (!formRevealed && !silent) track('form_open');
   formSection.hidden = false;
   makeYoursBtn.hidden = true;
   formRevealed = true;
   stickyCta.classList.remove('is-visible');
-  formSection.scrollIntoView({ behavior: 'smooth' });
+  if (!silent) formSection.scrollIntoView({ behavior: 'smooth' });
 }
 
-makeYoursBtn.addEventListener('click', revealForm);
-stickyMakeYoursBtn.addEventListener('click', revealForm);
+makeYoursBtn.addEventListener('click', () => revealForm());
+stickyMakeYoursBtn.addEventListener('click', () => revealForm());
+
+/* ---- carrying the form across a browser switch -------------------------
+ * Android's Instagram browser cannot save an image by any route, so the only
+ * real fix is to leave it — and Instagram's own "open in Chrome" reopens THE
+ * CURRENT URL. So if the URL already describes what was typed, the hand-off
+ * carries it for free: no copy-paste, no re-typing, no second guess at what
+ * their cities were.
+ *
+ * Deliberately the INPUTS, not the finished card. Encoding the generated
+ * identity and line would let anyone craft a URL that renders arbitrary text
+ * on a cityblend-branded card, straight past the content blocklist. Carrying
+ * only what they typed means the card still has to come from the server, with
+ * every check intact. The cost is one more generation after the switch, which
+ * is about a fifth of a cent and, since they never managed to save the first
+ * card, nothing they'll miss. */
+const CARRY_KEYS = ['h', 'b', 'n', 'c', 'y'];
+
+function writeStateToUrl(payload) {
+  const params = new URLSearchParams(location.search);
+  CARRY_KEYS.forEach((k) => params.delete(k));
+  if (payload.handle) params.set('h', payload.handle);
+  if (payload.birthCity) params.set('b', payload.birthCity);
+  if (payload.currentCity) params.set('n', payload.currentCity);
+  const between = payload.betweenCities.filter((row) => row.city && row.city.trim());
+  if (between.length) {
+    params.set('c', between.map((row) => row.city).join('|'));
+    if (between.some((row) => row.years)) {
+      params.set('y', between.map((row) => row.years || '').join('|'));
+    }
+  }
+  const qs = params.toString();
+  // replaceState, not pushState: this is a record of the current state, not a
+  // navigation, and back should still leave the site rather than walk through
+  // every card someone generated.
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
+function prefillFromUrl() {
+  const p = new URLSearchParams(location.search);
+  if (!p.get('b') && !p.get('n')) return false;
+  document.getElementById('handle').value = (p.get('h') || '').slice(0, 30);
+  document.getElementById('birth-city').value = (p.get('b') || '').slice(0, 40);
+  document.getElementById('current-city').value = (p.get('n') || '').slice(0, 40);
+  const cities = (p.get('c') || '').split('|').filter((c) => c.trim());
+  const years = (p.get('y') || '').split('|');
+  cities.slice(0, MAX_CITIES - 2).forEach((city, i) => {
+    addBetweenCityRow();
+    const rows = betweenList.querySelectorAll('.between-city-row');
+    const row = rows[rows.length - 1];
+    if (!row) return;
+    row.querySelector('.between-city-input').value = city.slice(0, 40);
+    const yrs = String(years[i] || '').replace(/\D/g, '').slice(0, 2);
+    if (yrs) row.querySelector('.between-city-years').value = yrs;
+  });
+  return true;
+}
 
 /* The example card can't shrink enough to keep the CTA above the fold on a
  * short phone without becoming an illegible thumbnail, and a tester who
@@ -346,6 +408,9 @@ async function generate(payload) {
     }
 
     lastPayload = payload;
+    // Put what they typed in the URL now, so that whatever happens next — a
+    // browser switch, a reload, a shared link — starts from here.
+    writeStateToUrl(payload);
     lastCard = {
       handle: payload.handle.startsWith('@') ? payload.handle : `@${payload.handle}`,
       identity: data.identity,
@@ -431,19 +496,40 @@ saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
   : NO_DOWNLOAD ? 'save my card'
     : 'download my card';
 
-// The exact menu wording differs by platform, and a vague "open in your
-// browser" is the kind of instruction people give up on. Naming the icon and
-// the menu item makes it a two-tap job instead of a hunt.
-saveFallbackSteps.textContent = IS_ANDROID
-  ? 'tap ⋮ (top right) → "open in Chrome"'
-  : 'tap ••• (top right) → "open in browser"';
+/* Two platforms, two different truths — and saying the wrong one is worse than
+ * saying nothing.
+ *
+ * iOS: press-and-hold on the image genuinely offers "Save to Photos", so that's
+ * the one-gesture answer and leaving is the fallback.
+ *
+ * Android: it does not. The structural reason is that a long-press image menu
+ * in an Android WebView is drawn by the host app, not the page — Instagram
+ * doesn't implement one, so there is nothing for the page to trigger, and no
+ * web API left to try either. One tester also reported press-and-hold doing
+ * nothing in Instagram's browser. So Android is told the truth directly and
+ * sent to Chrome first, rather than being handed a gesture that will probably
+ * fail and make the whole thing feel broken.
+ *
+ * "open in Chrome" reopens the current URL, which now carries what they typed,
+ * so nothing is lost by leaving. */
+if (IS_ANDROID) {
+  saveFallbackLead.textContent = "instagram's browser can't save images — open this page in Chrome and save it there.";
+  saveFallbackSteps.textContent = 'tap ⋮ (top right) → "open in Chrome"';
+  saveFallbackAlt.textContent = 'your cities come with you, so you just tap generate again.';
+} else {
+  saveFallbackLead.textContent = 'press and hold the card above, then choose Save to Photos.';
+  saveFallbackSteps.textContent = 'not working? tap ••• (top right) → "open in browser"';
+  saveFallbackAlt.textContent = 'your cities come with you, so you just tap generate again.';
+}
 
 // Clipboard as the last resort: if they can't find the menu, they can paste
 // the address anywhere. navigator.clipboard is https-only, which this is, but
 // in-app webviews are exactly where it tends to be missing — hence the
 // execCommand fallback rather than trusting one API.
 copyLinkBtn.addEventListener('click', async () => {
-  const url = 'https://cityblend.app/';
+  // The current URL, not the bare domain: it carries what they typed, so
+  // pasting it into Chrome lands them on their own filled-in form.
+  const url = location.href;
   let ok = false;
   try {
     await navigator.clipboard.writeText(url);
@@ -604,6 +690,15 @@ track('view', { ref: (() => {
 // after the example card is sized, since its height decides where the CTA sits
 syncStickyCta();
 updateCapUI();
+
+// If the URL carries what someone already typed — which is how a card survives
+// being handed from Instagram's browser to Chrome — restore it and open the
+// form, so they land on their own half-finished work rather than a blank page
+// they have to fill in again.
+if (prefillFromUrl()) {
+  revealForm(true);
+  updateCapUI();
+}
 
 /* ---- feedback ------------------------------------------------------------
    Posts to /api/feedback, which stores it in the Redis instance the app
