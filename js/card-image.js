@@ -36,8 +36,13 @@ const FONT_MONO = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
 const INK = '#0D1014';
 const TEXT = '#F2F4F0';
 const TEXT_SOFT = '#E4E8E3';
+/* One muted grey, not two. The route's ORIGIN / n YRS labels used to be a
+   slightly darker #6E7A83, which measured 4.34:1 on the card's near-black at
+   2.6cqw — a real WCAG 1.4.3 AA failure for normal-size text, and the smallest
+   type on the card at that. The two greys were a step apart visually but sat
+   on opposite sides of the 4.5:1 line, so they're merged rather than nudged:
+   #78848C is 4.97:1 and is already what the handle and footer use. */
 const TEXT_MUTED = '#78848C';
-const META_MUTED = '#6E7A83';
 
 /* Breaks a single word that is itself wider than the line. Needed because the
  * identity is one invented word with no spaces in it — "the moskvetersburger"
@@ -283,7 +288,7 @@ function drawCard(ctx, data) {
     const meta = metaFor(i, n - 1, data.years);
     if (meta) {
       ctx.font = `${metaSize}px ${FONT_MONO}`;
-      ctx.fillStyle = isNow ? data.color : META_MUTED;
+      ctx.fillStyle = isNow ? data.color : TEXT_MUTED;
       ctx.fillText(meta, textX + cityW + 2.2 * u, baseline);
     }
   });

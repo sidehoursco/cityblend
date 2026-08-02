@@ -370,12 +370,18 @@ body {
 
 .route li.is-now .city { font-weight: 700; }
 
+/* Was #6E7A83, which measured 4.34:1 against the card and so failed WCAG AA
+   for normal text — on the smallest type on the card. Now the same #78848C
+   the handle and footer use (4.97:1): one muted grey rather than two a step
+   apart on opposite sides of the 4.5:1 line. Every other card colour was
+   re-measured at the same time and passes, including all nine per-person line
+   colours (6.5:1-13.2:1) used for the NOW label and the stop badge. */
 .route .meta {
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 2.6cqw;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #6E7A83;
+  color: #78848C;
   white-space: nowrap;
   line-height: 1;
   flex: 0 0 auto;
