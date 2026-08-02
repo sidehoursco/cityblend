@@ -38,6 +38,26 @@ let lastImageUrl = null;
 const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// The single most important environment this app runs in, and the one it was
+// silently broken in: everyone who taps a link sticker on an Instagram story
+// lands in Instagram's own in-app webview, never in Safari or Chrome.
+//
+// That webview does NOT honour <a download>. It treats the click as a
+// navigation to the blob: URL, can't render it, and replaces the page with a
+// full-screen "can't load page" error carrying the Instagram logo — after the
+// card has already been generated and paid for. Reported by a tester within an
+// hour of the first story going out.
+//
+// So in here we must never navigate to a blob: URL. The rendered PNG is
+// already on the page as a real <img>, and press-and-hold saves it natively,
+// which is the one mechanism that does work in these webviews.
+// ?inapp=1 forces this on. Not a debug leftover — this branch is otherwise
+// only reachable by opening the site from inside a real Instagram story, which
+// makes the failure invisible during normal testing. That is exactly how it
+// shipped broken.
+const IN_APP_BROWSER = /Instagram|FBAN|FBAV|FB_IAB|FBIOS/i.test(navigator.userAgent || '')
+  || /[?&]inapp=1\b/.test(location.search);
+
 // Transit lines have colours; so does each person's route. Curated rather
 // than generated, so a hash can never land on a muddy or clashing hue.
 const LINE_COLORS = [
@@ -374,17 +394,31 @@ const CAN_SHARE_FILES = (() => {
 // (where it can go) rather than imperative (what to do next), so the two stop
 // fighting. Platform-agnostic on purpose — the sheet shows a dozen apps, and
 // the spec never intended Instagram-only.
+const HINT_HOLD = IS_IOS
+  ? 'press and hold the card, then choose Save to Photos'
+  : IN_APP_BROWSER
+    ? 'press and hold the card to save it'
+    : 'right-click the card to save it';
+
+// Inside an in-app browser with no share sheet there is no download to offer,
+// so the hint has to lead with the mechanism that actually works rather than
+// describing a button that can't do what it says.
+const NO_DOWNLOAD = IN_APP_BROWSER && !CAN_SHARE_FILES;
+
 const HINT_BEFORE = CAN_SHARE_FILES
   ? 'instagram, whatsapp, wherever'
-  : 'or right-click the card to save it';
+  : NO_DOWNLOAD
+    ? HINT_HOLD
+    : 'or right-click the card to save it';
 const HINT_AFTER = CAN_SHARE_FILES
   ? 'now add it to your story'
   : 'saved — now add it to your story';
-const HINT_HOLD = IS_IOS
-  ? 'press and hold the card, then choose Save to Photos'
-  : 'right-click the card to save it';
 
-saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →' : 'download my card';
+// "download my card" is a promise this browser can't keep; "save my card" is
+// true of press-and-hold too.
+saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
+  : NO_DOWNLOAD ? 'save my card'
+    : 'download my card';
 
 function resetImage() {
   if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
@@ -440,7 +474,9 @@ async function saveCard() {
       return;
     } finally {
       saveBtn.disabled = false;
-      saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →' : 'download my card';
+      saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
+        : NO_DOWNLOAD ? 'save my card'
+          : 'download my card';
     }
   }
 
@@ -460,6 +496,16 @@ async function saveCard() {
       saveHint.hidden = false;
       return;
     }
+  }
+
+  // In Instagram's / Facebook's webview this click would navigate to the blob:
+  // URL and blow the page away with a "can't load page" error, losing the card
+  // the person just made. Point them at press-and-hold instead, which works.
+  if (NO_DOWNLOAD) {
+    saveHint.textContent = HINT_HOLD;
+    saveHint.classList.remove('save-hint--done');
+    saveHint.hidden = false;
+    return;
   }
 
   const a = document.createElement('a');
