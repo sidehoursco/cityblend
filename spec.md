@@ -200,9 +200,20 @@ Why it matters: a card implying someone's move was an escape, or that leaving wa
 
 Launch decision was to ship and watch, because every card is now in the content log and the volume on day one is small and friendly. **If one of these appears in the log, tighten immediately** — the likely fix is code-level (detect the pattern in the output and force a retry) rather than another prompt rule, since prompt rules have now failed twice here.
 
+**Link previews — what each platform actually does**
+
+Tested by pasting the bare link into each app (2026-08-02):
+
+- **WhatsApp** renders *nothing* without `og:image` — no card, just a blue link. It does not fall back to a text-only preview the way the others do. Since WhatsApp is the primary seeding channel, missing `og:image` silently undercut every share.
+- **Telegram and iMessage** both render a text-only card when `og:image` is absent, so they look "fine" and hide the problem.
+- `og:image` must be an **absolute URL**, and 1200×630 (1.91:1) is what all of these crawlers expect.
+- **Previews are cached per URL, by the platform, not by us.** After fixing the tags, an already-shared link can keep showing the old preview. Telegram has an official refresh path: message the URL to **@WebpageBot**. WhatsApp has no public equivalent — test in a chat that has never seen the link.
+
+The image deliberately uses a neutral, *realistic* example rather than Sofia's own story: it is one static file seen by everyone who encounters a shared link, including people who never click, so it shouldn't spend that reach on anything that invites a bad-faith reading or that doesn't match the actual audience. Vienna was rejected after Sofia's first-hand read that it isn't a realistic Barcelona-expat origin.
+
 **Private stats page**
 
-`https://cityblend.app/api/stats?key=<STATS_KEY>` — not linked from anywhere, `STATS_KEY` lives in Vercel. Shows live card count, today, top cities, path-length spread, retry and fault rates, estimated spend, recent generations and all feedback. Test-host traffic is excluded from the headline numbers and shown faded in the table.
+`https://cityblend.app/api/stats?key=<STATS_KEY>` — not linked from anywhere. The value of `STATS_KEY` is in the project's Vercel environment variables and is deliberately **not** recorded in this file, which is public. Shows live card count, today, top cities, path-length spread, retry and fault rates, estimated spend, recent generations and all feedback. Test-host traffic is excluded from the headline numbers and shown faded in the table.
 
 Fails closed: with no `STATS_KEY` set it returns 404 rather than serving, because an endpoint that silently becomes public when a variable goes missing is worse than one that stops working — it displays other people's submissions. Sent `no-store` and `noindex`.
 
@@ -257,6 +268,7 @@ Collapsed footer link → one textarea → `POST /api/feedback` → Redis, surfa
       - Moscow→Kyiv reproducibly ships `the moskvian` — all three attempts fail the blend check, so the least-bad is shipped and logged. Short/awkward city names make some blends genuinely hard; `the kyevscovite` proves it is possible, just not reliable.
       - A new template is emerging: "the city that never stops ___" appeared across three unrelated paths. Emergent sameness seems to be a recurring cost of any fixed instruction set — worth re-checking every round rather than assuming a fix is permanent.
       - Word count creeps past the ~14 limit on some outputs; not currently enforced in code, and it could be.
+  - Round 8 (launch day, live generation spot-checks): **a new house template is forming for Barcelona-destination paths** — "moved to barcelona to forget" appeared across unrelated origins (Moscow, Naples). Consistent with the standing pattern that emergent sameness is a recurring cost of any fixed instruction set rather than a bug that gets fixed once. Worth re-checking each round; the content log now makes it visible at scale instead of by chance.
   - Key lesson, reconfirmed each round: **positive worked examples beat prohibition lists.** Banning a specific phrase just produces a new equivalent; naming the general principle and adding a few-shot example of the failure case actually moves the output. The fact-invention ban specifically needed to be the *principle* ("don't assert real-world facts about the cities you don't reliably know") rather than a list of categories — climate and language were both missed the first time because only direction/distance/continent-count were named.
   - Not a bug, by design: the identity typically blends only 2 cities (usually birth + current) even on long paths — matches the spec's own canonical example ("the moscelonian" drops London). The route below already lists every stop; the identity's job is an evocative nickname, not a manifest.
 
