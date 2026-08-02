@@ -40,15 +40,48 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* padding-top was 48px. The header below is paid for out of the existing
+   budget rather than added to it — the fold is the binding constraint on this
+   page (see the clamp on .cardwrap--example .card), and a naively-inserted
+   header pushes "make yours" back off a phone screen, which is the exact
+   problem that clamp was written to solve. Measured, not estimated: the top
+   of the example card sits at 226px with the header exactly as it did without
+   one, so the clamp constant below is unchanged and no phone loses the CTA
+   that had it before. */
 .page {
   max-width: 480px;
   margin: 0 auto;
-  padding: 48px 20px 32px;
+  padding: 16px 20px 32px;
+}
+
+/* 26px: reads as product identity at a glance without competing with the
+   1.9rem hero directly beneath it. The 12px gap is tight on purpose — it's
+   what makes the row net-free against the fold budget, and a header sitting
+   close to the content it heads is the normal look anyway. */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.brand img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.brand span {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 .hero {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 26px;
 }
 
 .hero h1 {
@@ -90,8 +123,14 @@ body {
    fiction: Safari's URL bar and toolbar eat ~110px, so on a real phone the
    CTA dropped back below the fold. dvh tracks the actually-visible viewport
    (and updates as the chrome collapses on scroll), so the card yields space
-   rather than the button falling off. ~330px is the rest of the first screen:
-   hero + caption + CTA + margins. aspect-ratio then narrows the width to
+   rather than the button falling off. ~325px is the rest of the first screen:
+   header + hero + caption + CTA + margins — and that constant IS that
+   furniture, so if you change any spacing above the card, re-measure and
+   change it here too, or the CTA quietly sinks back below the fold. It stayed
+   at 325 when the page header was added: the header's height was taken back
+   out of .page's padding-top and .brand's own margin, verified by measuring
+   the card's top offset before and after (226px both times).
+   aspect-ratio then narrows the width to
    match, keeping 9:16 intact. Result cards are unaffected — they're below
    the fold by nature and should stay full size. */
 .cardwrap--example .card {
@@ -165,12 +204,35 @@ body {
   margin-bottom: calc(6.5cqw - var(--over) * 0.5cqw);
 }
 
+/* Left column of the top row. min-width:0 is load-bearing — without it the
+   handle's ellipsis can't kick in, because a flex item won't shrink below its
+   content's intrinsic width by default and a long handle would push the badge
+   off the card. */
+.c-id {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2cqw;
+  min-width: 0;
+  padding-top: 1.4cqw;
+}
+
+/* Deliberately NOT var(--line): the accent changes per person across 9
+   colours, and a brand that changes colour every card is not a brand anyone
+   learns. Constant near-white also means it never has to be re-checked for
+   contrast against whichever accent a card happens to get. */
+.c-brand {
+  font-size: 3.6cqw;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #F2F4F0;
+  line-height: 1;
+}
+
 .c-handle {
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 3.2cqw;
   letter-spacing: 0.06em;
   color: #78848C;
-  padding-top: 1.4cqw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -321,12 +383,23 @@ body {
 
 .route li.is-now .meta { color: var(--line); }
 
+/* Two weights on one line, not one uniform string: "and you?" is the tone,
+   "cityblend.app" is the instruction, and only the second one needs to survive
+   being seen at story scale. The domain goes 5.0:1 -> 16.4:1 and 400 -> 700
+   while the line's footprint barely moves, so the card gains a legible address
+   without turning into an advert someone would rather not post. */
 .c-foot {
   margin-top: auto;
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 3cqw;
   letter-spacing: 0.04em;
   color: #78848C;
+}
+
+.c-foot b {
+  font-size: 3.4cqw;
+  font-weight: 700;
+  color: #F2F4F0;
 }
 
 .cta {

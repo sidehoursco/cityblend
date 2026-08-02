@@ -41,6 +41,23 @@
 </head>
 <body>
   <main class="page">
+    <!-- The product's name, which appeared nowhere on the page before: not in
+         the hero, not in the form, only inside the example card's own footer
+         and the browser tab (which doesn't exist on mobile). So someone
+         arriving FROM a shared card that read "cityblend.app" landed on a page
+         that never confirmed they were in the right place, and nobody could
+         tell a friend the name of a thing they'd never seen written down.
+         Left, not centred: the hero, subhead, caption and button are all
+         centred already, and a centred wordmark merges into the headline —
+         it reads as part of the message rather than as the product's name.
+         Not a link: it would point at the page you're already on, and this
+         footer already lost one dead href for that reason. Same icon.svg as
+         the favicon, so tab, page and card are recognisably one thing. -->
+    <div class="brand">
+      <img src="/icon.svg" alt="" width="26" height="26">
+      <span>cityblend</span>
+    </div>
+
     <header class="hero">
       <h1>what's your geographical identity?</h1>
       <p class="subhead">enter the cities you've lived in, get a name and a line that's actually about you.</p>
@@ -58,8 +75,17 @@
       <p class="example-caption">an example — yours below</p>
       <div class="card" id="example-card" style="--n:2; --line:#00A9B8">
         <div class="card__inner">
+          <!-- The wordmark costs nothing vertically: this row's height is set
+               by the 17cqw badge, and the handle alone only used ~4.5cqw of
+               it, so ~13cqw sat empty. Stacking the brand above the handle
+               fills dead space rather than compressing the card. It's the
+               half of the pair that makes a stranger LEARN the name; the
+               footer is the half that tells them where to go. -->
           <div class="c-top">
-            <span class="c-handle" id="example-handle">@linh</span>
+            <div class="c-id">
+              <span class="c-brand">cityblend</span>
+              <span class="c-handle" id="example-handle">@linh</span>
+            </div>
             <span class="c-badge"><b id="example-count">2</b><i>stops</i></span>
           </div>
           <h2 class="c-identity" id="example-identity">the hanarsawian</h2>
@@ -68,7 +94,14 @@
             <li><span class="city">Hanoi</span><span class="meta">origin</span></li>
             <li class="is-now"><span class="city">Warsaw</span><span class="meta">now</span></li>
           </ol>
-          <span class="c-foot">and you? → cityblend.app</span>
+          <!-- This line is the whole growth loop: the only bridge between
+               someone seeing a posted card and making one. It used to be a
+               single uniform grey string, so the domain — the only part that
+               is actually actionable — carried no more weight than the words
+               in front of it, at 5.0:1 contrast and ~11px as rendered in an
+               Instagram story. The invitation stays quiet; the address it
+               points at does not. -->
+          <span class="c-foot">and you? → <b>cityblend.app</b></span>
         </div>
       </div>
     </section>
@@ -140,13 +173,16 @@
       <div class="card" id="result-card">
         <div class="card__inner">
           <div class="c-top">
-            <span class="c-handle" id="result-handle"></span>
+            <div class="c-id">
+              <span class="c-brand">cityblend</span>
+              <span class="c-handle" id="result-handle"></span>
+            </div>
             <span class="c-badge"><b id="result-count"></b><i>stops</i></span>
           </div>
           <h2 class="c-identity" id="result-identity"></h2>
           <p class="c-line" id="result-line"></p>
           <ol class="route" id="result-route"></ol>
-          <span class="c-foot">and you? → cityblend.app</span>
+          <span class="c-foot">and you? → <b>cityblend.app</b></span>
         </div>
       </div>
       <!-- Once the PNG exists it replaces the DOM card above, so that pressing

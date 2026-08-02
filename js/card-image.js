@@ -144,7 +144,9 @@ function drawCard(ctx, data) {
   const padTop = 25.8 * u;
   const contentBottom = CARD_H - 36.5 * u;
   const innerW = CARD_W - padX * 2;
-  const footerSize = 3 * u;
+  // The bold domain is the tallest thing on the footer line, so it — not the
+  // muted prefix — is what the fit loop has to reserve room for.
+  const footerSize = 3.4 * u;
   const minGapAboveFooter = 3 * u;
 
   ctx.textBaseline = 'alphabetic';
@@ -177,14 +179,22 @@ function drawCard(ctx, data) {
 
   let y = padTop;
 
-  /* ---- handle + stop badge ---- */
+  /* ---- wordmark + handle + stop badge ---- */
   const badgeD = 17 * u;
   const handleSize = 3.2 * u;
+  const brandSize = 3.6 * u;
+
+  // Mirrors .c-id: 1.4u padding-top, then the wordmark box (3.6u, line-height
+  // 1), then a 1.2u gap, then the handle. The pair is ~9.4u tall against the
+  // badge's 17u, so it costs no height — the row was already this tall.
+  ctx.textAlign = 'left';
+  ctx.font = `700 ${brandSize}px ${FONT_SANS}`;
+  ctx.fillStyle = TEXT;
+  ctx.fillText('cityblend', padX, y + 1.4 * u + brandSize * 0.8);
 
   ctx.font = `${handleSize}px ${FONT_MONO}`;
   ctx.fillStyle = TEXT_MUTED;
-  ctx.textAlign = 'left';
-  ctx.fillText(data.handle, padX, y + 1.4 * u + handleSize * 0.85);
+  ctx.fillText(data.handle, padX, y + 1.4 * u + brandSize + 1.2 * u + handleSize * 0.85);
 
   const badgeCX = CARD_W - padX - badgeD / 2;
   const badgeCY = y + badgeD / 2;
@@ -278,10 +288,19 @@ function drawCard(ctx, data) {
     }
   });
 
-  /* ---- footer, baked into the image ---- */
-  ctx.font = `${3 * u}px ${FONT_MONO}`;
+  /* ---- footer, baked into the image ----
+   * Two weights sharing one baseline, mirroring .c-foot / .c-foot b. This is
+   * the only route from "saw someone's card" to "made my own", so the address
+   * is drawn to survive being viewed at story scale: 16.4:1 and bold, against
+   * 5.0:1 and regular for the invitation in front of it. */
+  const footPrefix = 'and you? → ';
   ctx.fillStyle = TEXT_MUTED;
-  ctx.fillText('and you? → cityblend.app', padX, contentBottom);
+  ctx.font = `${3 * u}px ${FONT_MONO}`;
+  ctx.fillText(footPrefix, padX, contentBottom);
+  const prefixW = ctx.measureText(footPrefix).width;
+  ctx.fillStyle = TEXT;
+  ctx.font = `700 ${3.4 * u}px ${FONT_MONO}`;
+  ctx.fillText('cityblend.app', padX + prefixW, contentBottom);
 }
 
 /* Returns a Promise<Blob> of the PNG. */
