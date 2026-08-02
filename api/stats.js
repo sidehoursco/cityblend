@@ -10,7 +10,7 @@
  * Renders HTML rather than JSON because the whole point is to read it — raw
  * JSON in a phone browser is not something anyone will actually do daily.
  *
- * POST with ?reset=all|generations|feedback wipes the logs — used to clear
+ * POST with ?reset=all|generations|feedback|counters wipes the logs — used to clear
  * development noise so the first real numbers start from zero.
  */
 
@@ -79,6 +79,15 @@ module.exports = async function handler(req, res) {
         counterKeys.push(`stat:${scope}:${type}:total`);
         counterKeys.push(`stat:${scope}:${type}:${today}`);
       });
+      // The referrer hash has to be listed explicitly. It was missed when this
+      // was first written because the loop above only enumerates the funnel
+      // event types, and referrers aren't one of them — they're a single hash
+      // per scope, written by HINCRBY in api/event.js. The effect was that
+      // every "reset all" silently left the referrer table intact while
+      // reporting success, so it accumulated across every wipe (78 visits'
+      // worth before this was spotted). DEL works on a hash the same as on a
+      // counter, so it just needs to be in the list.
+      counterKeys.push(`stat:${scope}:referrers`);
     });
 
     const keys = target === 'all' ? [CONTENT_LOG_KEY, FEEDBACK_KEY, ...counterKeys]
