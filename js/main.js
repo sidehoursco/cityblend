@@ -505,6 +505,11 @@ async function saveCard() {
     saveHint.textContent = HINT_HOLD;
     saveHint.classList.remove('save-hint--done');
     saveHint.hidden = false;
+    // Still counted. It's a tap, not a confirmed save — but so is the download
+    // path below, which also can't know whether the file was kept. Leaving it
+    // untracked would make the save rate look worst for Instagram traffic,
+    // which is most of the traffic.
+    track('download');
     return;
   }
 

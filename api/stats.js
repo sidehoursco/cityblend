@@ -49,8 +49,41 @@ function parseList(result) {
   }).filter(Boolean);
 }
 
+/* Timestamps are stored as UTC ISO strings (the serverless function has no
+ * idea where anyone is) but this page has exactly one reader, in Barcelona.
+ * Showing raw UTC meant every time on the page was two hours behind the clock
+ * on the wall, which makes "did that happen before or after I posted the
+ * story?" needlessly hard to answer. Formatted for the reader, not the server.
+ *
+ * Hardcoded rather than detected: this page is single-user and private, and a
+ * fixed zone is honest about that. It handles CET/CEST automatically. If the
+ * reader ever moves, this is the one line to change. */
+const DISPLAY_TZ = 'Europe/Madrid';
+
+const STAMP_FMT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DISPLAY_TZ,
+  year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+});
+
+function localStamp(iso) {
+  const d = new Date(iso);
+  // Fall back to the raw string rather than printing "Invalid Date" if an
+  // older log entry ever has a shape this doesn't parse.
+  if (!iso || Number.isNaN(d.getTime())) {
+    return String(iso || '').replace('T', ' ').slice(0, 16);
+  }
+  const p = {};
+  for (const part of STAMP_FMT.formatToParts(d)) p[part.type] = part.value;
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
+function localDay(iso) {
+  return localStamp(iso).slice(0, 10);
+}
+
 function sameDay(iso, ref) {
-  return String(iso || '').slice(0, 10) === ref;
+  return localDay(iso) === ref;
 }
 
 module.exports = async function handler(req, res) {
@@ -142,7 +175,11 @@ module.exports = async function handler(req, res) {
     return res.status(500).send(`stats unavailable: ${esc(err.message)}`);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Local, not UTC: "cards today" should roll over at the reader's midnight,
+  // not at 02:00 their time. Deliberately NOT the same `today` as the reset
+  // block above — that one keys Redis counters written by api/event.js in UTC
+  // and must stay UTC or it would delete the wrong day's key.
+  const today = localDay(new Date().toISOString());
   const live = generations.filter((g) => g.production);
   const liveToday = live.filter((g) => sameDay(g.at, today));
   const withRetries = live.filter((g) => (g.retries || 0) > 0).length;
@@ -172,14 +209,14 @@ module.exports = async function handler(req, res) {
   });
 
   const rows = generations.map((g) => `<tr class="${g.production ? '' : 'test'}">
-      <td class="when">${esc((g.at || '').replace('T', ' ').slice(0, 16))}${g.production ? '' : ' <span class="tag">test</span>'}</td>
+      <td class="when">${esc(localStamp(g.at))}${g.production ? '' : ' <span class="tag">test</span>'}</td>
       <td><b>${esc(g.identity)}</b><div class="line">${esc(g.line)}</div></td>
       <td class="path">${esc((g.path || []).join(' → '))}</td>
       <td class="num">${g.retries ? `${g.retries}×` : ''}${g.unresolvedFaults ? ' ⚠' : ''}</td>
     </tr>`).join('');
 
   const fbRows = feedback.map((f) => `<tr>
-      <td class="when">${esc((f.at || '').replace('T', ' ').slice(0, 16))}</td>
+      <td class="when">${esc(localStamp(f.at))}</td>
       <td>${esc(f.message)}${f.contact ? `<div class="line">↩ ${esc(f.contact)}</div>` : ''}</td>
     </tr>`).join('') || '<tr><td colspan="2" class="empty">nothing yet</td></tr>';
 
