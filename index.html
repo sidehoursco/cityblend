@@ -198,6 +198,22 @@
       <!-- Directly under the buttons: this hint is the next step for the share
            button, so nothing should come between them. -->
       <p class="save-hint" id="save-hint" hidden></p>
+
+      <!-- Android's Instagram/Facebook webview is the worst case this app has:
+           no share sheet AND no working download, so the save button has
+           nothing it can actually do. Writing a small grey hint under the
+           buttons wasn't enough — a tester tapped save and reported that
+           "nothing at all happens", because a quiet line of text is invisible
+           when you've just pressed a button and expect an action. So this is a
+           visible panel, not a hint, and it gives two routes out: the gesture
+           that may work, and the escape hatch that always does. -->
+      <div class="save-fallback" id="save-fallback" hidden>
+        <p class="save-fallback__lead">press and hold the card above, then choose <b>download image</b></p>
+        <p class="save-fallback__alt">not working? instagram's browser blocks downloads. open this page in your normal browser:</p>
+        <p class="save-fallback__steps" id="save-fallback-steps"></p>
+        <button type="button" id="copy-link-btn" class="secondary-btn">copy link instead</button>
+      </div>
+
       <p class="remaining-note" id="remaining-note"></p>
     </section>
 

@@ -22,6 +22,9 @@ const remainingNote = document.getElementById('remaining-note');
 const saveBtn = document.getElementById('save-btn');
 const resultImage = document.getElementById('result-image');
 const saveHint = document.getElementById('save-hint');
+const saveFallback = document.getElementById('save-fallback');
+const saveFallbackSteps = document.getElementById('save-fallback-steps');
+const copyLinkBtn = document.getElementById('copy-link-btn');
 
 // Everything the exported PNG needs, kept from the last successful generation.
 let lastCard = null;
@@ -57,6 +60,14 @@ const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent)
 // shipped broken.
 const IN_APP_BROWSER = /Instagram|FBAN|FBAV|FB_IAB|FBIOS/i.test(navigator.userAgent || '')
   || /[?&]inapp=1\b/.test(location.search);
+
+// iOS and Android in-app webviews fail differently, and the way out differs
+// too. On iOS the share sheet is usually available, and press-and-hold on an
+// image reliably offers "Save to Photos". On Android there is neither a share
+// sheet nor a working download, and long-press may not offer to save at all —
+// so Android needs a real escape hatch, not just a gesture suggestion.
+const IS_ANDROID = /Android/i.test(navigator.userAgent || '')
+  || /[?&]android=1\b/.test(location.search);
 
 // Transit lines have colours; so does each person's route. Curated rather
 // than generated, so a hash can never land on a muddy or clashing hue.
@@ -420,6 +431,43 @@ saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
   : NO_DOWNLOAD ? 'save my card'
     : 'download my card';
 
+// The exact menu wording differs by platform, and a vague "open in your
+// browser" is the kind of instruction people give up on. Naming the icon and
+// the menu item makes it a two-tap job instead of a hunt.
+saveFallbackSteps.textContent = IS_ANDROID
+  ? 'tap ⋮ (top right) → "open in Chrome"'
+  : 'tap ••• (top right) → "open in browser"';
+
+// Clipboard as the last resort: if they can't find the menu, they can paste
+// the address anywhere. navigator.clipboard is https-only, which this is, but
+// in-app webviews are exactly where it tends to be missing — hence the
+// execCommand fallback rather than trusting one API.
+copyLinkBtn.addEventListener('click', async () => {
+  const url = 'https://cityblend.app/';
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(url);
+    ok = true;
+  } catch (_) {
+    try {
+      const scratch = document.createElement('textarea');
+      scratch.value = url;
+      scratch.setAttribute('readonly', '');
+      scratch.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      scratch.setSelectionRange(0, url.length);
+      ok = document.execCommand('copy');
+      scratch.remove();
+    } catch (_err) {
+      ok = false;
+    }
+  }
+  // If both failed, show the address so it can at least be typed or selected
+  // by hand — never leave the button looking like it did nothing.
+  copyLinkBtn.textContent = ok ? 'copied — paste it in your browser' : 'cityblend.app';
+});
+
 function resetImage() {
   if (lastImageUrl) URL.revokeObjectURL(lastImageUrl);
   lastImageUrl = null;
@@ -428,6 +476,7 @@ function resetImage() {
   resultImage.removeAttribute('src');
   resultCard.hidden = false;
   saveHint.hidden = true;
+  saveFallback.hidden = true;
 }
 
 // Renders the PNG up front and swaps it in for the DOM card, so what's on
@@ -441,9 +490,15 @@ async function prepareImage() {
     resultImage.addEventListener('load', () => {
       resultImage.hidden = false;
       resultCard.hidden = true;
-      saveHint.textContent = HINT_BEFORE;
-      saveHint.classList.remove('save-hint--done');
-      saveHint.hidden = false;
+      // The image decodes asynchronously, so this can land AFTER the save
+      // button has already opened the fallback panel — which would put the
+      // same press-and-hold instruction on screen twice, once quietly and
+      // once loudly. The panel is the fuller version, so it wins.
+      if (saveFallback.hidden) {
+        saveHint.textContent = HINT_BEFORE;
+        saveHint.classList.remove('save-hint--done');
+        saveHint.hidden = false;
+      }
     }, { once: true });
     resultImage.src = lastImageUrl;
   } catch (err) {
@@ -502,9 +557,12 @@ async function saveCard() {
   // URL and blow the page away with a "can't load page" error, losing the card
   // the person just made. Point them at press-and-hold instead, which works.
   if (NO_DOWNLOAD) {
-    saveHint.textContent = HINT_HOLD;
-    saveHint.classList.remove('save-hint--done');
-    saveHint.hidden = false;
+    saveHint.hidden = true;
+    saveFallback.hidden = false;
+    // The panel is below the button that was just tapped, and on a phone the
+    // card fills the screen — without this it can open entirely off-screen,
+    // which is indistinguishable from the "nothing happens" it exists to fix.
+    saveFallback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     // Still counted. It's a tap, not a confirmed save — but so is the download
     // path below, which also can't know whether the file was kept. Leaving it
     // untracked would make the save rate look worst for Instagram traffic,

@@ -538,6 +538,46 @@ body {
   font-weight: 600;
 }
 
+/* Deliberately a bordered panel rather than another line of muted text. This
+   only ever appears in response to a tap, in a browser where the button
+   genuinely cannot do what it says, and the previous quiet-hint version read
+   to a tester as the button being broken. It has to look like something
+   happened. */
+.save-fallback {
+  margin: 14px auto 0;
+  max-width: 340px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--accent-light);
+  text-align: left;
+}
+
+.save-fallback[hidden] { display: none; }
+
+.save-fallback p { margin: 0 0 8px; }
+
+.save-fallback__lead {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.save-fallback__alt,
+.save-fallback__steps {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.save-fallback__steps {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.save-fallback .secondary-btn {
+  margin-top: 2px;
+}
+
 .form-section {
   margin-top: 32px;
   border-top: 1px solid var(--border);
