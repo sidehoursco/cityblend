@@ -70,7 +70,7 @@ Produce exactly two things.
 
 1. "identity" — a real-sounding demonym, in the style of Bostonian, Parisian, Milanese, Neapolitan, built by BLENDING TWO DIFFERENT CITIES: a lead fragment of one onto the demonym-suffix of the most significant one (usually the current city, or where they spent the most years). Prefix with "the ".
    Both cities must be audible in it. Good: "the moscelonian" (Moscow + Barcelona), "the valcelonian" (Valladolid + Barcelona), "the osalinner" (Osaka + Berliner).
-   It must also be SAYABLE OUT LOUD on sight. A native speaker stumbled over "the torontondino", "the torescondian" and "the torontondidian" — all technically valid blends, all a mouthful. Aim for three or four syllables, avoid stacking consonants at the seam, and don't repeat a syllable that already appears earlier in the word ("toron-tondi-dian"). If you can't say it fluently on the first try, shorten the fragment you're blending from. One city's plain demonym on its own misses the joke the app exists to make — if a blend sounds clumsy, change the fragment length or blend from a different city on the path. Sole exception: a short non-demonym phrase when a path is so trivially short that this is itself the joke, e.g. "barely qualifies" — that form takes no "the ".
+   It must also be SAYABLE OUT LOUD on sight. A native speaker stumbled over "the torontondino", "the torescondian" and "the torontondidian" — all technically valid blends, all a mouthful. Aim for three or four syllables, avoid stacking consonants at the seam, and don't repeat a syllable that already appears earlier in the word ("toron-tondi-dian"). When sayability and blending pull against each other, THE BLEND WINS and you solve the mouthful another way: shorten the lead fragment, blend from a different city on the path, or pick a different suffix. Shortening until one of the two cities has vanished is not a solution, it is the failure — "the moscovian" for a Moscow -> Belgrade path is not a hard blend made simple, it is Belgrade deleted, and it describes someone who never left. Every path can be blended; some just need a less obvious seam. Sole exception: a short non-demonym phrase when a path is so trivially short that this is itself the joke, e.g. "barely qualifies" — that form takes no "the ".
 
 2. "line" — one short, sharp, lowercase sentence about the person.
 
@@ -90,7 +90,7 @@ Two narrow things you genuinely get wrong, so avoid them specifically:
 - Which sea, coast or body of water a city sits on. Skip it unless the user typed it.
 - Counting continents or countries. You get these wrong — a Cairo/Rome/Amsterdam/Lisbon path is two continents, not the three it was described as. The <counts> block below has every number you are allowed to use.
 
-Also: vary how the line OPENS. Consecutive cards that all begin by naming the origin's character read as one template with the nouns swapped, however good each is alone. And if a place genuinely is an island, the English is "on an island", never "in an island".
+You will be given a required FORM for each card. Follow it exactly — it is what stops every card arriving in the same shape, and you cannot judge that yourself because you never see the other cards. And if a place genuinely is an island, the English is "on an island", never "in an island".
 The test: assert it only if you would bet money on it. A claim about the person needs no checking at all — that is obviously affectionate guesswork and it is where most of the humour should come from. Users sometimes type a country or region instead of a city, so don't assert what kind of place an entry is.
 
 VOICE: deadpan and specific, quietly funny at the person's expense but never contemptuous — a friend who knows them well enough to tease. Never impressed by a grand path, never pitying a small one, and never implying their moves amounted to nothing; a real person is about to share this. Most people want something faintly braggable, so the ideal line lets them look interesting while undercutting them slightly.
@@ -543,7 +543,43 @@ function angleFor(path, years) {
   return angles[Math.floor(Math.random() * angles.length)];
 }
 
+/* The template leak, and why "vary the form" in the system prompt could never
+ * fix it: the model is stateless. It cannot see the previous card, so an
+ * instruction not to repeat across cards asks it to compare against something
+ * it has no access to.
+ *
+ * Live evidence: a Caracas -> Germany -> Barcelona path came back as "spent
+ * five years in germany learning efficiency, moved to barcelona to forget it
+ * all" — structurally identical to a curated example it was never shown. It
+ * converges on that shape because the shape is comfortable, not because it
+ * copied anything.
+ *
+ * The angle rotates WHAT the line is about; this rotates HOW it is built,
+ * which is the axis the repetition was actually on. Chosen in code for the
+ * same reason the angle is: code can decide it, so the model shouldn't.
+ * Deliberately ONE constraint per card — stacking form rules on top of an
+ * angle and a voice guide degrades a line faster than repetition does. */
+const FORMS = [
+  { id: 'one-breath', text: 'FORM: one sentence, said in a single breath. Do not splice two clauses with a comma — if it needs a comma to hold two halves together, that is two thoughts and you only get one.' },
+  { id: 'two-beat', text: 'FORM: two beats split by a full stop, the second shorter than the first. Setup, then the drop.' },
+  { id: 'very-short', text: 'FORM: eight words or fewer, total. Cut everything that is not load-bearing.' },
+  { id: 'no-numbers', text: 'FORM: no numbers and no durations anywhere — not "five years", not "a decade", not a count of moves. The observation has to carry it by itself.' },
+  { id: 'second-person', text: 'FORM: address them directly as "you". Not a description of a person, a remark made to their face.' },
+  { id: 'no-move-verbs', text: 'FORM: no verbs of moving — not moved, left, swapped, traded, went, relocated, ended up. Say what they ARE now, not what they did.' },
+];
+
+function formFor(angle) {
+  // The duration angle exists to make a real number the punchline, so the
+  // no-numbers form would cancel it out. Every other pairing is fine.
+  const wantsNumber = angle.startsWith('A REAL NUMBER');
+  const pool = FORMS.filter((f) => !(wantsNumber && f.id === 'no-numbers'));
+  return pool[Math.floor(Math.random() * pool.length)].text;
+}
+
 async function generateBlend({ handle, path, years }) {
+  // Picked once so the form can be chosen to suit it, rather than the two
+  // being drawn independently and occasionally cancelling each other out.
+  const angle = angleFor(path, years);
   const yearsLine = years.some((y) => y != null)
     ? path.map((city, i) => `${city}${years[i] != null ? ` (${years[i]}y)` : ''}`).join(' -> ')
     : 'not provided';
@@ -563,8 +599,13 @@ ${pathFacts(path, years)}
 
 Your assigned angle for THIS card. Commit to it rather than hedging toward a safer general-purpose line, and do not try to combine it with the others:
 <angle>
-${angleFor(path, years)}
-</angle>`;
+${angle}
+</angle>
+
+The shape this line must take. This is not a suggestion and it is not about content — whatever the angle above is about, it has to arrive in this form:
+<form>
+${formFor(angle)}
+</form>`;
 
   const attempt = async (extraNudge) => {
     const requestBody = {
