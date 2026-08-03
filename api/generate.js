@@ -385,7 +385,49 @@ function identityFaults(identity) {
   return [`The identity "${identity}" accidentally contains "${hit}", which is a rude word in at least one language. Blend the cities differently so no such word appears inside it.`];
 }
 
-function lineFaults(line, hasYears) {
+/* Places whose nationality is genuinely disputed, so that cityblend can refuse
+ * to assign one — in ANY direction. This is not a claim about who they belong
+ * to and it is deliberately not a city-to-country dataset; it is the list of
+ * cases where a joke generator has no business having an opinion.
+ *
+ * Why it exists: a path reading Donetsk -> Mariupol -> Nikolaev -> Sevastopol
+ * -> ... -> Bilbao produced "spent eighteen years collecting russian cities
+ * like they were going out of style". Four of those cities are Ukrainian, and
+ * calling them Russian is not a tone slip — it takes a side on annexation, on a
+ * card handed to the person who lived in all four.
+ *
+ * Normalised loosely because people type these many ways (Kyiv/Kiev,
+ * Nikolaev/Mykolaiv, Lviv/Lvov), and matched on the whole path rather than
+ * per city: a line saying "russian cities" never says WHICH, so there is
+ * nothing to check it against city by city.
+ *
+ * Incomplete by nature — it only ever contains what someone thought to add.
+ * It is still better than the two alternatives, which are banning nationality
+ * everywhere (killing "collected five german cities before settling on another
+ * continent entirely") or doing nothing, which is what shipped that card. */
+const DISPUTED_PLACES = [
+  'donetsk', 'luhansk', 'lugansk', 'mariupol', 'sevastopol', 'simferopol',
+  'melitopol', 'kherson', 'berdyansk', 'yalta', 'kerch', 'horlivka', 'gorlovka',
+  'nikolaev', 'mykolaiv', 'zaporizhzhia', 'zaporozhye', 'bakhmut', 'avdiivka',
+  'crimea', 'donbas', 'jerusalem', 'hebron', 'gaza', 'ramallah', 'nicosia',
+  'famagusta', 'kyrenia', 'stepanakert', 'khankendi', 'tiraspol', 'sukhumi',
+  'tskhinvali', 'srinagar', 'taipei', 'pristina', 'mitrovica', 'el aaiun', 'laayoune',
+];
+
+function pathTouchesDisputedPlace(path) {
+  return (path || []).some((city) => {
+    const norm = String(city).toLowerCase().replace(/[^a-z ]/g, '').trim();
+    return DISPUTED_PLACES.some((p) => norm === p || norm.startsWith(`${p} `) || norm.endsWith(` ${p}`));
+  });
+}
+
+/* Any nationality adjective attached to a group of places. Matched as a shape
+ * rather than a word list, so it doesn't need to know every demonym: it fires
+ * on "<something>ian/ese/ish/ic cities", which is what nationality-grouping
+ * looks like. Only consulted for paths that touch a disputed place. */
+const NATIONALITY_GROUPING = /\b\w+(an|ese|ish|ic)\s+(cities|towns|places|capitals|villages)\b/i;
+
+function lineFaults(line, hasYears, path) {
   const faults = [];
   if (/\b(he|she|his|her|him|hers|himself|herself)\b/i.test(line)) {
     faults.push('It used a gendered pronoun. You cannot know this person\'s gender from a handle — rewrite without he/she/his/her/him.');
@@ -435,6 +477,13 @@ function lineFaults(line, hasYears) {
   ];
   if (escapeFraming.some((re) => re.test(line))) {
     faults.push('It framed the moves as escaping hardship or as not being this person\'s own decision. Some people listing these cities left because of war, poverty or persecution, and a line noting that they got out, or that it was never a choice, lands very differently on them than it reads to you. Tease the person instead — their habits, their self-image, what they claim about the move at a party. Never the place they left, and never why they had to.');
+  }
+  // Only for paths that touch a disputed place. Everywhere else, grouping
+  // cities by nationality is allowed and can be funny — "collected five german
+  // cities before settling on another continent entirely" is a good line and
+  // this must not break it.
+  if (pathTouchesDisputedPlace(path) && NATIONALITY_GROUPING.test(line)) {
+    faults.push('It grouped these cities under a nationality. At least one place on this path has a disputed or contested status, so naming a country for them takes a side in something this app has no business having an opinion about — and the person holding the card is the one it happened to. Do not assign any nationality to the cities on this path, in any direction. Make the joke about the person instead.');
   }
   return faults;
 }
@@ -628,7 +677,9 @@ These counts are already worked out for you. Use them exactly as given and never
 ${pathFacts(path, years)}
 </counts>
 
-Your assigned angle for THIS card. Commit to it rather than hedging toward a safer general-purpose line, and do not try to combine it with the others:
+${pathTouchesDisputedPlace(path) ? `At least one place on this path has a disputed or contested status. Do not name a country or nationality for ANY city here, in any direction, and do not group them as "the X cities". Say nothing about borders, who a place belongs to, or why anyone moved. Write about the person: a habit, a self-image, something they would claim at a party. Treat the path as ordinary.
+
+` : ''}Your assigned angle for THIS card. Commit to it rather than hedging toward a safer general-purpose line, and do not try to combine it with the others:
 <angle>
 ${angle}
 </angle>
@@ -704,7 +755,7 @@ ${formFor(angle)}
   // wins, preferring a later attempt on a tie since it was told what to fix.
   const score = (candidate) => {
     if (!candidate) return [];
-    const problems = lineFaults(candidate.line, years.some((y) => y != null));
+    const problems = lineFaults(candidate.line, years.some((y) => y != null), path);
     problems.push(...identityFaults(candidate.identity));
     const bare = String(candidate.identity).toLowerCase().replace(/^the\s+/, '');
     if (bare.length > 20 && !bare.includes(' ')) {
