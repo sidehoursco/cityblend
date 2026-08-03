@@ -646,6 +646,12 @@ ${angleFor(path, years)}
 
   let retries = 0;
   let problems = score(out);
+
+  // The identity is the hook; the line is the joke. A flat line on a good
+  // demonym is survivable — "the moscovian" for someone who moved to Belgrade
+  // is not, and that is the complaint that actually arrived.
+  const identityIsBad = (candidate) => !!candidate
+    && (!looksLikeDemonym(candidate.identity, path) || identityFaults(candidate.identity).length > 0);
   // One retry, not two. Cutting the second halves the worst-case cost per card
   // (3 billed calls -> 2) and the evidence says it was barely earning its keep:
   // when a first retry failed to fix a fault, a second almost never did either
@@ -664,6 +670,41 @@ ${angleFor(path, years)}
     if (retryProblems.length <= problems.length) {
       out = retry;
       problems = retryProblems;
+    }
+  }
+
+  /* One extra round, spent ONLY on a broken identity.
+   *
+   * The note above is still right that a second general retry rarely helps —
+   * it re-rolls everything and usually lands in the same place. This is a
+   * different request: the line is already decided and handed back verbatim,
+   * so the model has one job instead of two, with the specific cities named.
+   *
+   * The evidence for spending it: a Moscow -> Belgrade path was generated six
+   * times, every one needed a retry, and three shipped flawed, including "the
+   * moscovian" — which contains no Belgrade at all and which the blend check
+   * had already rejected before it shipped. We were saving a fifth of a cent
+   * per card while the person burned twelve API calls rerolling by hand and
+   * left unhappy anyway. The retry budget was in the wrong place.
+   *
+   * Only the identity is taken from the result; the line already in hand is
+   * kept regardless, so this round can never make the line worse. */
+  if (out && identityIsBad(out)) {
+    const currentCity = path[path.length - 1];
+    const otherCities = path.slice(0, -1).filter((c) => String(c).trim().toLowerCase() !== String(currentCity).trim().toLowerCase());
+    const identityRetry = await attempt(
+      `Only the NAME is wrong. Keep the line exactly as it is and return it back unchanged: "${out.line}"\n`
+      + `Replace the identity. "${out.identity}" was rejected because it is not a blend — it has to sound like a demonym for someone who lives in ${currentCity} now but came from ${otherCities.join(' and ') || 'somewhere else'}.\n`
+      + `Build it by fusing a recognisable piece of ${currentCity} with a recognisable piece of ${otherCities[0] || 'the earlier city'}, and end it like a real demonym (-ian, -ese, -er, -ino, -ois, -ite). Both places must still be audible in the result. Keep it under about 18 letters.`
+    );
+    retries += 1;
+    if (identityRetry && identityRetry.identity) {
+      const merged = { identity: identityRetry.identity, line: out.line };
+      const mergedProblems = score(merged);
+      if (mergedProblems.length <= problems.length) {
+        out = merged;
+        problems = mergedProblems;
+      }
     }
   }
   if (out && problems.length) {
