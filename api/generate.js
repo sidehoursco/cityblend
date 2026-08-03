@@ -605,6 +605,30 @@ function angleFor(path, years) {
   const hasRepeat = new Set(path.map(norm)).size < path.length;
   const hasYears = years.some((y) => y != null);
 
+  /* Paths touching a disputed place get their own small pool rather than the
+   * general one, because the problem there is structural, not lexical.
+   *
+   * Banning phrases turned into whack-a-mole: "none of them were the choice"
+   * was blocked, then "collecting russian cities", then the next attempt
+   * produced "have been running ever since" — the same displacement narrative
+   * in words no list contained. The model keeps reaching for it because the
+   * general angles invite a reading of the JOURNEY, and on a path like
+   * Donetsk -> Mariupol -> Sevastopol the journey has only one obvious reading.
+   *
+   * These three can't produce it: they point at the destination, or at who the
+   * person is now, and away from the route entirely. The one genuinely good
+   * line this path produced — "you've lived in eight cities and somehow picked
+   * the one that requires explaining where it is" — is exactly what the first
+   * of them asks for. */
+  if (pathTouchesDisputedPlace(path)) {
+    const safeAngles = [
+      `DESTINATION ONLY: build the entire joke on ${path[path.length - 1]}, where they live now — what it is known for, what choosing it says about someone. Do not characterise the earlier cities, do not summarise the route, and do not say anything about why they left anywhere.`,
+      'SELF-IMAGE: the gap between how this person describes themselves now and what they actually do — a habit, an affectation, something they would claim at a party. About the person today, not about the journey that got them here.',
+      'PRESENT TENSE: one dry observation about who they are now. A quirk, a small ordinary detail of their life. Do not mention moving, leaving, arriving or travelling at all.',
+    ];
+    return safeAngles[Math.floor(Math.random() * safeAngles.length)];
+  }
+
   const angles = [
     'CITY CHARACTER: build the joke on one real, widely-recognised quality of ONE of these cities — its reputation, mood, pace, what it is known for being like. Warsaw as stubborn, Hanoi as chaotic, a city known for being sleepy or expensive or relentlessly cheerful. Confident opinion is wanted here, not hedging; this is the angle that makes a line feel knowledgeable instead of generated.',
     'CITY CHARACTER: build the joke on one real, widely-recognised quality of ONE of these cities — its reputation, mood, pace, what it is known for being like. Be specific and opinionated about the place; a bland adjective wastes the angle.',
@@ -780,7 +804,13 @@ ${formFor(angle)}
   // when a first retry failed to fix a fault, a second almost never did either
   // — the Moscow/Kyiv blend failed all three attempts. Retries only cost money
   // when they actually fire, so the typical card is unaffected either way.
-  for (let round = 0; round < 1 && out && problems.length; round += 1) {
+  // Two general rounds instead of one when the path touches a disputed place.
+  // A gendered pronoun shipped on exactly such a path because the budget ran
+  // out after one attempt — and these are the paths where shipping a fault
+  // costs the most, since the person holding the card is the one it happened
+  // to. Everywhere else the economics are unchanged.
+  const generalRounds = pathTouchesDisputedPlace(path) ? 2 : 1;
+  for (let round = 0; round < generalRounds && out && problems.length; round += 1) {
     console.error('output faults, retrying:', JSON.stringify({ round, identity: out.identity, line: out.line, problems }));
     const retry = await attempt(
       `Your previous attempt was rejected. Fix these specific problems and return corrected JSON:\n- ${problems.join('\n- ')}`
