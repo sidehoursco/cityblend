@@ -210,8 +210,14 @@
       <div class="save-fallback" id="save-fallback" hidden>
         <p class="save-fallback__lead" id="save-fallback-lead"></p>
         <p class="save-fallback__steps" id="save-fallback-steps"></p>
-        <p class="save-fallback__alt" id="save-fallback-alt"></p>
+        <!-- The button sits directly under the instruction that tells you to
+             press it, and ahead of the caveat. Tested on a real Android phone:
+             Instagram's "open in Chrome" reopens the URL it first loaded and
+             discards everything the page did after, so it always arrives with
+             an empty form. Copying the link is the only route that keeps what
+             someone typed, so it is the one that gets the headline. -->
         <button type="button" id="copy-link-btn" class="secondary-btn">copy link with my cities</button>
+        <p class="save-fallback__alt" id="save-fallback-alt"></p>
       </div>
 
       <p class="remaining-note" id="remaining-note"></p>

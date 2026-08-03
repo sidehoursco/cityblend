@@ -530,14 +530,22 @@ saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
  * actually keep it, and the menu route is described without one. Better to
  * offer a slightly longer path that works than a short one that quietly
  * loses someone's six cities. */
+/* Confirmed on a real Android phone rather than assumed this time. Instagram's
+ * "open in Chrome" reopens the URL it originally loaded — the story link,
+ * fbclid and all — and throws away everything the page did afterwards, so the
+ * form always arrives empty. Its own "copy link" captures the live URL with
+ * the carried cities intact, and pasting that into Chrome restores the form.
+ *
+ * So copying is the route that works and the menu is the one that costs you
+ * your typing. Earlier versions had these the wrong way round. */
 if (IS_ANDROID) {
-  saveFallbackLead.textContent = "instagram's browser can't save images. open this page in Chrome and save it from there.";
-  saveFallbackSteps.textContent = 'tap ⋮ (top right) → "open in Chrome"';
-  saveFallbackAlt.textContent = 'if the form comes up empty, copy this link instead — it remembers your cities:';
+  saveFallbackLead.textContent = "instagram's browser can't save images — you'll need chrome for that bit.";
+  saveFallbackSteps.textContent = 'copy this link and paste it into chrome. it keeps your cities:';
+  saveFallbackAlt.textContent = 'instagram\'s ⋮ menu has "open in Chrome" too, but it arrives with an empty form.';
 } else {
   saveFallbackLead.textContent = 'press and hold the card above, then choose Save to Photos.';
-  saveFallbackSteps.textContent = 'not working? tap ••• (top right) → "open in browser"';
-  saveFallbackAlt.textContent = 'if the form comes up empty, copy this link instead — it remembers your cities:';
+  saveFallbackSteps.textContent = 'not working? copy this link and paste it into your browser:';
+  saveFallbackAlt.textContent = 'the ••• menu can open it too, but it arrives with an empty form.';
 }
 
 // Clipboard as the last resort: if they can't find the menu, they can paste
