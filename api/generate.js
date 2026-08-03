@@ -405,6 +405,37 @@ function lineFaults(line, hasYears) {
   if (/\bcontinents?\b|\b(north|south|latin)[\s-]+america\b|\bthe\s+americas\b|\b(europe|africa|asia|oceania|antarctica|eurasia|scandinavia|the\s+balkans|the\s+middle\s+east)\b/i.test(line)) {
     faults.push('It named or counted a continent or large region. You get these wrong — note that Mexico is in North America, and Turkey spans two continents. Drop the continent or region reference and make the joke about the person or a single city instead.');
   }
+  /* The escape framing. The prompt has forbidden this since launch and it still
+   * arrived twice: "three continents, one sensible choice" on a Caracas origin,
+   * and "seven cities in eighteen years. none of them were the choice." on a
+   * path reading Donetsk -> Mariupol -> Sevastopol -> ... -> Bilbao. Both
+   * shipped clean, because until now this rule lived only in the prompt.
+   *
+   * The thing being caught is NOT teasing someone about why they moved — that
+   * is the best material this app has and it stays untouched: "chose barcelona
+   * anyway", "called it a lateral move", "moved 30km and still filled out this
+   * form" all pass. What is caught is a line that has stopped being a joke and
+   * become a flat observation about someone's displacement, delivered to the
+   * person it happened to.
+   *
+   * Phrases, never the bare word: banning "choice" would kill "chose barcelona
+   * anyway", which the prompt actively asks for. And because a fault triggers a
+   * retry rather than blocking the card, an occasional false positive costs one
+   * API call and a different line, not a broken result — which is what makes it
+   * affordable to be slightly over-inclusive on "fled" and "escaped". */
+  const escapeFraming = [
+    /\bno\s+choice\b/i,
+    /\b(wasn'?t|was\s+not|isn'?t|is\s+not|never|hardly|not)\s+(really\s+)?(a|the|their)?\s*choice\b/i,
+    /\bnone\s+of\s+(them|these|those)\s+(were|was)\s+(a|the)?\s*choice\b/i,
+    /\b(a|the|one)\s+sensible\s+choice\b/i,
+    /\b(fled|escaped)\b/i,
+    /\b(got|made\s+it)\s+out\b/i,
+    /\blucky\s+to\s+(leave|have\s+left|get\s+out|be\s+out)\b/i,
+    /\b(had|forced)\s+to\s+(leave|go)\b/i,
+  ];
+  if (escapeFraming.some((re) => re.test(line))) {
+    faults.push('It framed the moves as escaping hardship or as not being this person\'s own decision. Some people listing these cities left because of war, poverty or persecution, and a line noting that they got out, or that it was never a choice, lands very differently on them than it reads to you. Tease the person instead — their habits, their self-image, what they claim about the move at a party. Never the place they left, and never why they had to.');
+  }
   return faults;
 }
 
