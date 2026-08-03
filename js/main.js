@@ -518,14 +518,26 @@ saveBtn.textContent = CAN_SHARE_FILES ? 'share my card →'
  *
  * "open in Chrome" reopens the current URL, which now carries what they typed,
  * so nothing is lost by leaving. */
+/* The "your cities come with you" promise was attached to the wrong route.
+ * It relied on Instagram's "open in Chrome" reopening the URL as the page
+ * currently has it, after history.replaceState — and a tester on Android
+ * reported landing in Chrome with an empty form, with the fix demonstrably
+ * live at the time. So Instagram appears to hand over the URL it originally
+ * loaded, not the current one, and that promise was false where it mattered.
+ *
+ * The copy-link button does not depend on any of that: it copies
+ * location.href, params and all. So the promise moves to the route that can
+ * actually keep it, and the menu route is described without one. Better to
+ * offer a slightly longer path that works than a short one that quietly
+ * loses someone's six cities. */
 if (IS_ANDROID) {
-  saveFallbackLead.textContent = "instagram's browser can't save images — open this page in Chrome and save it there.";
+  saveFallbackLead.textContent = "instagram's browser can't save images. open this page in Chrome and save it from there.";
   saveFallbackSteps.textContent = 'tap ⋮ (top right) → "open in Chrome"';
-  saveFallbackAlt.textContent = 'your cities come with you, so you just tap generate again.';
+  saveFallbackAlt.textContent = 'if the form comes up empty, copy this link instead — it remembers your cities:';
 } else {
   saveFallbackLead.textContent = 'press and hold the card above, then choose Save to Photos.';
   saveFallbackSteps.textContent = 'not working? tap ••• (top right) → "open in browser"';
-  saveFallbackAlt.textContent = 'your cities come with you, so you just tap generate again.';
+  saveFallbackAlt.textContent = 'if the form comes up empty, copy this link instead — it remembers your cities:';
 }
 
 // Clipboard as the last resort: if they can't find the menu, they can paste
