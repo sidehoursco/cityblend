@@ -445,7 +445,11 @@ const NATIONALITY_GROUPING = /\b\w+(an|ese|ish|ic)\s+(cities|towns|places|capita
 
 function lineFaults(line, hasYears, path) {
   const faults = [];
-  if (/\b(he|she|his|her|him|hers|himself|herself)\b/i.test(line)) {
+  // "a man who spent seven years proving milan was worth coming back to" shipped
+  // clean: it assigns a gender without ever using a pronoun, so a pronoun-only
+  // check walks straight past it. Same rule, different surface.
+  if (/\b(he|she|his|her|him|hers|himself|herself)\b/i.test(line)
+    || /\b(a|the|one|some|this|that)\s+(man|woman|guy|girl|lad|lady|bloke|gal|boy|dude|bro|sis)\b/i.test(line)) {
     faults.push('It used a gendered pronoun. You cannot know this person\'s gender from a handle — rewrite without he/she/his/her/him.');
   }
   if (!hasYears && /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(year|years|months?|decades?)\b/i.test(line)) {
@@ -671,7 +675,7 @@ function angleFor(path, years) {
     angles.push('THE RETURN: they went back somewhere. Treat leaving-and-returning as the whole story and say what it reveals about them.');
   }
   if (hasYears) {
-    angles.push('A REAL NUMBER: make one duration from the <counts> block the punchline — a stay far shorter than the rest, or a very long one. State it plainly and let the number do the work. Do not invent arithmetic on top of it.');
+    angles.push('A REAL NUMBER AS EVIDENCE: take one duration from the <counts> block and use it to PROVE something about the person — a stay far shorter than the rest, or a conspicuously long one. The number is the evidence, never the punchline: "ankara lasted one year. milan lasted seven." is two facts the card already shows, and it is not a joke. "spent 18 years in monaco calling it temporary" is the same number doing actual work. Do not invent arithmetic on top of it.');
   }
   return angles[Math.floor(Math.random() * angles.length)];
 }
