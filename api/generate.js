@@ -446,7 +446,8 @@ function pathTouchesDisputedPlace(path) {
  * looks like. Only consulted for paths that touch a disputed place. */
 const NATIONALITY_GROUPING = /\b\w+(an|ese|ish|ic)\s+(cities|towns|places|capitals|villages)\b/i;
 
-function lineFaults(line, hasYears, path) {
+function lineFaults(line, hasYears, path, years) {
+  const pathLen = (path || []).length;
   const faults = [];
   // "a man who spent seven years proving milan was worth coming back to" shipped
   // clean: it assigns a gender without ever using a pronoun, so a pronoun-only
@@ -457,6 +458,45 @@ function lineFaults(line, hasYears, path) {
   }
   if (!hasYears && /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(year|years|months?|decades?)\b/i.test(line)) {
     faults.push('It stated a length of time, but no years were submitted for this path, so any duration is invented. Remove it.');
+  }
+  /* And when years WERE submitted, any number in the line still has to be one
+   * of the real ones. "you left milano once and spent the next four years..."
+   * came from a 7/1/3 path — there is no four in it. Until now that was
+   * unchecked: the rule above only fires when no years were given at all.
+   *
+   * Only numbers carrying a unit are examined, so "the one that finally stuck"
+   * and "a city" are untouched — it is "<n> years" and "<n> cities" that make
+   * a factual claim. */
+  if (hasYears) {
+    const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50 };
+    const stated = [];
+    const re = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty)\s+(years?|cities|moves|stops|countries)\b/gi;
+    let m;
+    while ((m = re.exec(line)) !== null) {
+      const n = /^\d+$/.test(m[1]) ? Number(m[1]) : WORDS[m[1].toLowerCase()];
+      if (n != null) stated.push({ n, unit: m[2].toLowerCase() });
+    }
+    if (stated.length) {
+      const yrs = (years || []).filter((y) => y != null && y > 0);
+      const total = yrs.reduce((a, b) => a + b, 0);
+      // Unit-aware, because a single pooled set of valid numbers lets the wrong
+      // one through under the wrong noun: on a 7/1/3 path "four years" passed
+      // by matching the MOVE count, and "two cities" passed by matching Paris's
+      // years. Each unit only accepts the numbers that can mean it.
+      const allowedFor = (unit) => {
+        if (/^years?$/.test(unit)) return new Set([...yrs, total]);
+        if (unit === 'cities' || unit === 'stops') return new Set([pathLen]);
+        if (unit === 'moves') return new Set([pathLen - 1]);
+        return null; // countries: not derivable from a city list, so not judged here
+      };
+      const wrong = stated.filter((x) => {
+        const ok = allowedFor(x.unit);
+        return ok && !ok.has(x.n);
+      });
+      if (wrong.length) {
+        faults.push(`It stated "${wrong[0].n} ${wrong[0].unit}", which is not a number from this path. The only numbers you may use are the per-city years given to you, their total, the number of cities, and the number of moves. Use one of those or drop the number.`);
+      }
+    }
   }
   // Continent and country counts are wrong often enough to be worth refusing
   // outright: a Cairo/Rome/Amsterdam/Lisbon path got called three continents
@@ -818,7 +858,7 @@ ${formFor(angle)}
   // wins, preferring a later attempt on a tie since it was told what to fix.
   const score = (candidate) => {
     if (!candidate) return [];
-    const problems = lineFaults(candidate.line, years.some((y) => y != null), path);
+    const problems = lineFaults(candidate.line, years.some((y) => y != null), path, years);
     problems.push(...identityFaults(candidate.identity));
     const bare = String(candidate.identity).toLowerCase().replace(/^the\s+/, '');
     if (bare.length > 20 && !bare.includes(' ')) {
@@ -910,7 +950,7 @@ ${formFor(angle)}
    * fixed, and ask for a minimal edit rather than a new joke. Only the line is
    * taken from the result, so this can never damage an identity that already
    * passed. Fires only when line faults actually remain. */
-  const remainingLineFaults = out ? lineFaults(out.line, years.some((y) => y != null), path) : [];
+  const remainingLineFaults = out ? lineFaults(out.line, years.some((y) => y != null), path, years) : [];
   if (out && remainingLineFaults.length) {
     const lineRetry = await attempt(
       `Only the LINE is wrong. Keep the identity exactly as it is and return it back unchanged: "${out.identity}"\n`
