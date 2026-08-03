@@ -713,6 +713,30 @@ track('view', { ref: (() => {
   try { return document.referrer ? new URL(document.referrer).hostname : 'direct'; }
   catch (_) { return 'direct'; }
 })() });
+/* Hand the page to Chrome, for Android users stuck in Instagram's webview.
+ *
+ * An Android intent: URL asks the OS to open the address in a named app.
+ * S.browser_fallback_url is part of the intent spec: if com.android.chrome
+ * isn't installed, Android opens that URL instead of showing an error, so
+ * someone on Samsung Internet or Firefox gets a no-op rather than a failure
+ * page. The visible "or tap ⋮" line covers the remaining case where Instagram
+ * blocks the intent outright — which it may, and which changes between app
+ * versions, so this can never be the only route offered.
+ *
+ * fbclid is dropped on the way through: it's Meta's click tracker, appended to
+ * the link when it came out of Instagram, and there's no reason to carry it
+ * into the browser or into anything the person later copies. */
+if (IS_ANDROID && IN_APP_BROWSER) {
+  const target = new URL(location.href);
+  target.searchParams.delete('fbclid');
+  const fallback = encodeURIComponent(target.toString());
+  document.getElementById('open-chrome-btn').href = 'intent://'
+    + target.host + target.pathname + target.search
+    + '#Intent;scheme=https;package=com.android.chrome'
+    + `;S.browser_fallback_url=${fallback};end`;
+  document.getElementById('inapp-notice').hidden = false;
+}
+
 // after the example card is sized, since its height decides where the CTA sits
 syncStickyCta();
 updateCapUI();

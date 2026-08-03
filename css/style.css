@@ -54,6 +54,51 @@ body {
   padding: 16px 20px 32px;
 }
 
+/* Shown only to Android visitors inside Instagram's webview, where saving is
+   impossible by any route. It costs the fold for that group, which is the
+   right trade: their alternative is filling the form, spending a generation
+   and then discovering none of it can be saved or carried out. Everyone else
+   gets display:none via [hidden] and is unaffected — including the main
+   audience, who arrive by typing the domain into their own browser. */
+.inapp-notice {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--accent-light);
+  text-align: left;
+}
+
+.inapp-notice[hidden] { display: none; }
+
+.inapp-notice__lead {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* An anchor rather than a button: the intent: URL is set as a real href, so
+   the hand-off happens on a genuine link activation. Script-driven navigation
+   to the same URL is more likely to be blocked for lacking a user gesture. */
+.inapp-notice__btn {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 999px;
+  padding: 12px 24px;
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  line-height: 20px;
+}
+
+.inapp-notice__alt {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 /* 26px: reads as product identity at a glance without competing with the
    1.9rem hero directly beneath it. The 12px gap is tight on purpose — it's
    what makes the row net-free against the fold budget, and a header sitting

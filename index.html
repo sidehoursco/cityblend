@@ -41,6 +41,27 @@
 </head>
 <body>
   <main class="page">
+    <!-- Android + Instagram's in-app browser only. That combination cannot save
+         an image by any route (Instagram draws no image menu in its webview,
+         offers no share sheet, and blocks downloads), so the person is going to
+         have to leave eventually. Every rescue we tried at save time was too
+         late: Instagram's "open in Chrome" reopens the URL it first loaded and
+         discards the form, and even when the typing survives via copy-link, the
+         card itself never does. Confirmed on a real Android phone.
+
+         So this catches them on arrival, before anything is typed and before a
+         generation is spent — at which point there is no state to lose and the
+         hand-off is clean. Deliberately a tap rather than an automatic
+         redirect: navigations without a user gesture are blocked more often,
+         and silently ejecting someone out of Instagram the moment they land is
+         what malicious pages do. The manual instruction stays visible
+         underneath so a blocked intent is never a dead end. -->
+    <div class="inapp-notice" id="inapp-notice" hidden>
+      <p class="inapp-notice__lead">instagram's browser can't save images.</p>
+      <a class="inapp-notice__btn" id="open-chrome-btn" href="#">open in Chrome</a>
+      <p class="inapp-notice__alt">or tap ⋮ at the top right → "open in Chrome"</p>
+    </div>
+
     <!-- The product's name, which appeared nowhere on the page before: not in
          the hero, not in the form, only inside the example card's own footer
          and the browser tab (which doesn't exist on mobile). So someone
