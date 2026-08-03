@@ -174,6 +174,44 @@ function truncate(str, max) {
   return String(str || '').trim().slice(0, max);
 }
 
+/* People type the country too — "Barcelona, Spain", "clarksville,tn usa",
+ * "Dieburg, Germany" — and it damages three separate things at once: the route
+ * on the card prints the whole string, the top-cities aggregate splits one city
+ * across several spellings (barcelona 21 and "barcelona, spain" 14 were the
+ * same place), and the model is handed a country name it can then repeat back.
+ * Everything after the first comma is the part nobody asked for, so it goes.
+ * A leading comma is left alone rather than emptying the field. */
+function cleanCity(raw) {
+  const collapsed = String(raw || '').replace(/\s+/g, ' ').trim();
+  const comma = collapsed.indexOf(',');
+  const city = comma > 0 ? collapsed.slice(0, comma).trim() : collapsed;
+  return city.slice(0, MAX_CITY_LEN);
+}
+
+/* One person entered their current city as an in-between stop as well, so the
+ * path ended "...Frankfurt -> Barcelona -> Barcelona" and the line came out as
+ * "spent five years in barcelona, then decided to stay" — which reads as
+ * broken. Consecutive repeats are one continuous stay, so they merge and their
+ * years add up. Non-consecutive repeats are left alone: leaving and coming
+ * back is a real thing that happened, and the prompt has a joke angle for it. */
+function collapseRepeats(path, years) {
+  const norm = (c) => String(c).trim().toLowerCase();
+  const outPath = [];
+  const outYears = [];
+  path.forEach((city, i) => {
+    const last = outPath.length - 1;
+    if (last >= 0 && norm(outPath[last]) === norm(city)) {
+      const a = outYears[last];
+      const b = years[i];
+      outYears[last] = a == null && b == null ? null : (a || 0) + (b || 0);
+      return;
+    }
+    outPath.push(city);
+    outYears.push(years[i]);
+  });
+  return { path: outPath, years: outYears };
+}
+
 async function readJsonBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let raw = '';
@@ -187,8 +225,8 @@ async function readJsonBody(req) {
 
 function validate(body) {
   const handle = truncate(body.handle, MAX_HANDLE_LEN);
-  const birthCity = truncate(body.birthCity, MAX_CITY_LEN);
-  const currentCity = truncate(body.currentCity, MAX_CITY_LEN);
+  const birthCity = cleanCity(body.birthCity);
+  const currentCity = cleanCity(body.currentCity);
   const rawBetween = Array.isArray(body.betweenCities) ? body.betweenCities : [];
 
   if (!handle) return { ok: false, error: 'handle is required' };
@@ -197,14 +235,15 @@ function validate(body) {
 
   const between = rawBetween
     .map((entry) => ({
-      city: truncate(entry && entry.city, MAX_CITY_LEN),
+      city: cleanCity(entry && entry.city),
       years: entry && entry.years !== '' && entry.years != null ? Number(entry.years) : null,
     }))
     .filter((entry) => entry.city.length > 0)
     .slice(0, Math.max(0, MAX_CITIES - 2));
 
-  const path = [birthCity, ...between.map((e) => e.city), currentCity];
-  const years = [null, ...between.map((e) => e.years), null];
+  const rawPath = [birthCity, ...between.map((e) => e.city), currentCity];
+  const rawYears = [null, ...between.map((e) => e.years), null];
+  const { path, years } = collapseRepeats(rawPath, rawYears);
 
   const fullText = [handle, ...path].join(' ');
   if (containsBlockedWord(fullText)) {
@@ -635,6 +674,11 @@ ${angleFor(path, years)}
     // the only way to find out which checks are earning their retry
     out.retries = retries;
     out.unresolvedFaults = problems.length;
+    // The COUNT alone told us 34% of live cards were shipping flawed and
+    // nothing about why, which is not enough to fix anything. The first few
+    // words of each fault are enough to group them on the stats page without
+    // storing the whole coaching paragraph in every log entry.
+    out.faultKinds = problems.map((p) => String(p).split(/[.:]/)[0].trim().slice(0, 60));
   }
 
   return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
@@ -686,6 +730,11 @@ module.exports = async function handler(req, res) {
       line: blend.line,
       retries: blend.retries || 0,
       unresolvedFaults: blend.unresolvedFaults || 0,
+      faultKinds: blend.faultKinds || [],
+      // Sent by the client so the funnel can tell a first card apart from a
+      // reroll of the same one. Inferring it from the regenerate counter would
+      // be an estimate; this is the fact.
+      regenerated: body.regenerated === true,
     });
     return res.status(200).json({
       identity: blend.identity,

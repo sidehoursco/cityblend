@@ -195,6 +195,26 @@ module.exports = async function handler(req, res) {
   const saved = counters.shares + counters.downloads;
   const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—');
 
+  /* First cards and rerolls counted apart. Lumping them made the funnel read
+   * as nonsense — "generated" outran "opened form" (53 vs 39) because one
+   * person pressing regenerate four times looked like four more people, and
+   * "shared or saved" was then divided by rolls instead of by people. The
+   * first-card number is the one that belongs in the funnel; rerolls are a
+   * quality signal, which is a different question. Log entries written before
+   * this shipped have no flag, so they count as first cards. */
+  const rerolls = live.filter((g) => g.regenerated === true).length;
+  const firstCards = live.length - rerolls;
+  const rerollRate = pct(rerolls, live.length);
+
+  // Which validator is actually firing. "18 shipped flawed" said there was a
+  // problem and nothing about where, which is not enough to act on.
+  const faultCounts = {};
+  live.forEach((g) => (g.faultKinds || []).forEach((k) => {
+    const key = String(k).trim();
+    if (key) faultCounts[key] = (faultCounts[key] || 0) + 1;
+  }));
+  const topFault = Object.entries(faultCounts).sort((a, b) => b[1] - a[1])[0] || null;
+
   const cityCounts = {};
   live.forEach((g) => (g.path || []).forEach((c) => {
     const k = String(c).trim().toLowerCase();
@@ -258,16 +278,18 @@ module.exports = async function handler(req, res) {
 <div class="cards">
   <div class="stat"><b>${counters.views}</b><span>visits</span></div>
   <div class="stat"><b>${counters.formOpens}</b><span>opened form · ${pct(counters.formOpens, counters.views)}</span></div>
-  <div class="stat"><b>${live.length}</b><span>generated · ${pct(live.length, counters.formOpens)}</span></div>
-  <div class="stat"><b>${saved}</b><span>shared or saved · ${pct(saved, live.length)}</span></div>
+  <div class="stat"><b>${firstCards}</b><span>got a card · ${pct(firstCards, counters.formOpens)}</span></div>
+  <div class="stat"><b>${saved}</b><span>shared or saved · ${pct(saved, firstCards)}</span></div>
 </div>
 
 <h2>Health</h2>
 <div class="cards">
   <div class="stat"><b>${liveToday.length}</b><span>cards today</span></div>
   <div class="stat"><b>${totalFeedback}</b><span>feedback</span></div>
+  <div class="stat"><b>${rerolls}</b><span>rerolls · ${rerollRate} of all cards</span></div>
   <div class="stat"><b>${withRetries}</b><span>needed a retry</span></div>
-  <div class="stat"><b>${withFaults}</b><span>shipped flawed</span></div>
+  <div class="stat"><b>${withFaults}</b><span>shipped flawed · ${pct(withFaults, live.length)}</span></div>
+  <div class="stat"><b>${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>
   <div class="stat"><b>$${estSpend}</b><span>est. api spend</span></div>
 </div>
 

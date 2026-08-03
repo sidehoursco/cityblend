@@ -217,7 +217,9 @@ function drawCard(ctx, data) {
   ctx.font = `700 ${8.4 * u}px ${FONT_SANS}`;
   ctx.fillText(String(n), badgeCX, badgeCY + 1.2 * u);
   ctx.font = `${2.2 * u}px ${FONT_MONO}`;
-  ctx.fillText('STOPS', badgeCX, badgeCY + 5.1 * u);
+  // "1 STOPS" on a card someone is about to post reads as unfinished. Reachable
+  // now that a path whose birth and current city match collapses to one stop.
+  ctx.fillText(n === 1 ? 'STOP' : 'STOPS', badgeCX, badgeCY + 5.1 * u);
   ctx.textAlign = 'left';
 
   y += badgeD + m.topGap;

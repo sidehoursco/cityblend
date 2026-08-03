@@ -386,7 +386,11 @@ function setLoading(isLoading) {
   regenerateBtn.textContent = isLoading ? 'blending...' : 'regenerate';
 }
 
-async function generate(payload) {
+// isRegenerate is passed through to the server purely so the content log can
+// tell a first card apart from a reroll. Without it the funnel counts both as
+// "generated", which made "shared or saved" read as a percentage of rolls
+// rather than of people.
+async function generate(payload, isRegenerate) {
   setLoading(true);
   formStatus.hidden = true;
 
@@ -394,7 +398,7 @@ async function generate(payload) {
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, regenerated: isRegenerate === true }),
     });
     const data = await response.json();
 
@@ -427,6 +431,8 @@ async function generate(payload) {
     setIdentityScale(resultCard, data.identity, data.path.length);
     resultLine.textContent = data.line;
     resultCount.textContent = data.path.length;
+    // mirrors the canvas renderer, so preview and export agree
+    resultCard.querySelector('.c-badge i').textContent = data.path.length === 1 ? 'stop' : 'stops';
     buildRoute(resultRoute, data.path, data.years);
     // spacing compresses off --n; the line colour is the person's own
     resultCard.style.setProperty('--n', data.path.length);
@@ -450,7 +456,7 @@ form.addEventListener('submit', (event) => {
 });
 
 regenerateBtn.addEventListener('click', () => {
-  if (lastPayload) generate(lastPayload);
+  if (lastPayload) generate(lastPayload, true);
 });
 
 // Probed once with a throwaway file: navigator.canShare only reports honestly
