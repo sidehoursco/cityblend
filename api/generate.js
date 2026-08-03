@@ -380,9 +380,25 @@ const IDENTITY_SUBSTRING_BLOCKLIST = [
 
 function identityFaults(identity) {
   const word = String(identity).toLowerCase();
+  const faults = [];
+
+  /* Mixed scripts. Surfaced immediately after the fix that lets non-Latin city
+   * names through the blend check: a Люберцы -> Москва -> Barcelona path came
+   * back as "the люберcelonian" — Cyrillic fused straight onto a Latin
+   * demonym. Nothing rejected it, because the blend check now skips cities it
+   * cannot read, and it reads as broken rather than as a joke.
+   *
+   * The card, the demonym endings and the whole voice are Latin, so the
+   * identity has to be too. Transliterate the fragment instead of pasting it. */
+  if (/[^\p{Script=Latin}\p{M}\s'’.-]/u.test(String(identity))) {
+    faults.push(`The identity "${identity}" contains letters from a non-Latin alphabet. Write it entirely in the Latin alphabet — transliterate the city fragment rather than pasting it in its own script, the way Москва becomes "mosc" and Люберцы becomes "lyuber".`);
+  }
+
   const hit = IDENTITY_SUBSTRING_BLOCKLIST.find((bad) => word.includes(bad));
-  if (!hit) return [];
-  return [`The identity "${identity}" accidentally contains "${hit}", which is a rude word in at least one language. Blend the cities differently so no such word appears inside it.`];
+  if (hit) {
+    faults.push(`The identity "${identity}" accidentally contains "${hit}", which is a rude word in at least one language. Blend the cities differently so no such word appears inside it.`);
+  }
+  return faults;
 }
 
 /* Places whose nationality is genuinely disputed, so that cityblend can refuse
