@@ -76,6 +76,9 @@ Produce exactly two things.
 
 WHAT MAKES IT GOOD
 - It says something the card doesn't already show. Names, order, years and stop count are all visible; a rearrangement of those adds nothing. Bring a read on the person — their habits, self-image, what they'd claim about the move at a party, the gap between their story and what happened — or a fresh image, or a real detail about a place, or a light cultural touchstone (an object, a food, a transport, a local phrase).
+- THE TEST FOR THAT, and the one to apply before answering: the line must CLAIM something about the person that the path cannot prove. If every word could be checked against the route, it is a caption, not a joke — stating which city lasted how long is two facts already printed on the card. The claim is a guess and is supposed to be: a self-deception they would deny, a pattern they cannot see in themselves, the gap between how they tell it and what it actually is, or an image that reframes the whole path in one move. But never invent a FACT to get there — no duration, city or event that was not given to you. Guess about who they are; never about what happened.
+- WHERE THE SENTENCE STOPS IS MOST OF THE JOKE. Deadpan is landing position: end on the word that does the damage, and stop there. If a clause follows the punchline to explain it, soften it or add a second thought, cut the clause — the line was already finished.
+- A CITY'S OWN CHARACTER is fair material on any card, not only when the angle asks for it: what a place is known for being like, its pace, its reputation, the thing it cannot stop being. Be opinionated about it; a confident read on a place sounds knowledgeable, a bland adjective wastes the move.
 - It builds on what is unique to THIS path: a repeat city, one stay much shorter than the rest, an obscure starting town, a return, a final city nobody would predict from the ones before.
 - Around 14 words maximum, usually fewer. Past that you are explaining rather than landing it.
 - At most two cities named; zero is often strongest. Don't build the line as a sequence of places — that's the route, not a verdict.
@@ -717,6 +720,10 @@ async function generateBlend({ handle, path, years }) {
   // Picked once so the form can be chosen to suit it, rather than the two
   // being drawn independently and occasionally cancelling each other out.
   const angle = angleFor(path, years);
+  // Just the label, so the content log can group by which brief produced which
+  // line. Deciding to cut an angle was previously a hunch — nothing recorded
+  // which one any card came from.
+  const angleId = String(angle).split(':')[0].trim().slice(0, 40);
   const yearsLine = years.some((y) => y != null)
     ? path.map((city, i) => `${city}${years[i] != null ? ` (${years[i]}y)` : ''}`).join(' -> ')
     : 'not provided';
@@ -936,6 +943,7 @@ ${formFor(angle)}
     out.faultKinds = problems.map((p) => String(p).split(/[.:]/)[0].trim().slice(0, 60));
   }
 
+  if (out) out.angle = angleId;
   return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
 }
 
@@ -986,6 +994,7 @@ module.exports = async function handler(req, res) {
       retries: blend.retries || 0,
       unresolvedFaults: blend.unresolvedFaults || 0,
       faultKinds: blend.faultKinds || [],
+      angle: blend.angle || null,
       // Sent by the client so the funnel can tell a first card apart from a
       // reroll of the same one. Inferring it from the regenerate counter would
       // be an estimate; this is the fact.
