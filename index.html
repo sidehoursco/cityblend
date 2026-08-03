@@ -59,7 +59,13 @@
     <div class="inapp-notice" id="inapp-notice" hidden>
       <p class="inapp-notice__lead">instagram's browser can't save images.</p>
       <a class="inapp-notice__btn" id="open-chrome-btn" href="#">open in Chrome</a>
-      <p class="inapp-notice__alt">or tap ⋮ at the top right → "open in Chrome"</p>
+      <!-- Confirmed working on a real Android phone: the intent hand-off opens
+           Chrome, after Android's standard "leave the app?" confirmation. That
+           prompt is named here on purpose — an unexpected system warning is
+           exactly the moment someone backs out of a thing they were told was
+           safe, and the fallback stays in the same line for the versions where
+           Instagram blocks the intent outright. -->
+      <p class="inapp-notice__alt">instagram will ask if you want to leave the app — say yes. if nothing happens, tap ⋮ at the top right instead.</p>
     </div>
 
     <!-- The product's name, which appeared nowhere on the page before: not in
