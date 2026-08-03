@@ -229,7 +229,7 @@ module.exports = async function handler(req, res) {
   });
 
   const rows = generations.map((g) => `<tr class="${g.production ? '' : 'test'}">
-      <td class="when">${esc(localStamp(g.at))}${g.production ? '' : ' <span class="tag">test</span>'}</td>
+      <td class="when">${esc(localStamp(g.at))}${g.production ? '' : ' <span class="tag">test</span>'}${g.handle ? `<div class="who">@${esc(g.handle)}</div>` : ''}</td>
       <td><b>${esc(g.identity)}</b><div class="line">${esc(g.line)}</div></td>
       <td class="path">${esc((g.path || []).join(' → '))}</td>
       <td class="num">${g.retries ? `${g.retries}×` : ''}${g.unresolvedFaults ? ' ⚠' : ''}</td>
@@ -259,6 +259,12 @@ module.exports = async function handler(req, res) {
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
   .stat { border: 1px solid #8883; border-radius: 10px; padding: 12px; }
   .stat b { display: block; font-size: 1.5rem; letter-spacing: -0.02em; }
+  /* The fault tile holds a sentence, not a number. At the tile's 1.5rem it
+     filled half the row and shouted louder than the figures around it. */
+  .stat b.text { font-size: 0.95rem; line-height: 1.3; font-weight: 600; }
+  /* Handle sits under the timestamp: it was already logged and never shown,
+     which meant no way to tell whose card a bad line landed on. */
+  .who { color: #8a8f98; font-size: 0.8rem; margin-top: 2px; }
   .stat span { font-size: 0.75rem; color: #6B7078; text-transform: uppercase; letter-spacing: 0.05em; }
   table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
   td, th { border-bottom: 1px solid #8883; padding: 7px 8px; vertical-align: top; text-align: left; }
@@ -289,7 +295,7 @@ module.exports = async function handler(req, res) {
   <div class="stat"><b>${rerolls}</b><span>rerolls · ${rerollRate} of all cards</span></div>
   <div class="stat"><b>${withRetries}</b><span>needed a retry</span></div>
   <div class="stat"><b>${withFaults}</b><span>shipped flawed · ${pct(withFaults, live.length)}</span></div>
-  <div class="stat"><b>${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>
+  <div class="stat"><b class="text">${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>
   <div class="stat"><b>$${estSpend}</b><span>est. api spend</span></div>
 </div>
 
