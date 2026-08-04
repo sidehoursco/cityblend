@@ -828,7 +828,14 @@ ${formFor(angle)}
       // Was 200, which truncated mid-JSON when the model emitted any preamble —
       // producing repeatable "unparseable output" on specific paths. This is a
       // ceiling, not a spend: real replies are ~40 tokens.
-      max_tokens: 1024,
+      // Haiku does not think, so ~40-token replies fit easily in 1024. Every
+      // current non-Haiku model runs ADAPTIVE THINKING BY DEFAULT when the
+      // thinking parameter is omitted, and max_tokens caps thinking AND the
+      // response text together — so 1024 was consumed entirely by the thinking
+      // block and the model never reached the answer. Every Sonnet request
+      // returned stop_reason max_tokens with a single thinking block and no
+      // text, which read as "Sonnet is bad at this" for ten hours.
+      max_tokens: activeModel === HAIKU ? 1024 : 8192,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: extraNudge ? `${userContent}\n\n${extraNudge}` : userContent }],
     };
