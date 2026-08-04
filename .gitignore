@@ -1,3 +1,8 @@
 .DS_Store
 .vercel
 node_modules
+
+# Local Anthropic key for the prompt lab. The repo is public — this must never
+# be committed. The production key stays in Vercel's environment variables.
+.env
+.env.*
