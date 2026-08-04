@@ -1,4 +1,29 @@
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
+const HAIKU = 'claude-haiku-4-5-20251001';
+const MODEL = process.env.ANTHROPIC_MODEL || HAIKU;
+
+/* Comparing models WITHOUT being able to break the live site.
+ *
+ * On 4 Aug the Sonnet comparison was run by pointing the production env var at
+ * another model. It failed on every request for ten hours and the only person
+ * who noticed was a real visitor who tried five times and left. The lesson is
+ * not "test more carefully" — it is that an experiment must not be able to
+ * reach production at all.
+ *
+ * So the override is refused on the production host, whatever is asked for.
+ * The test host has its own rate-limit budget and is excluded from the stats,
+ * which is exactly what an experiment wants. Aliases rather than raw ids so a
+ * typo fails as an unknown alias instead of a confusing API error. */
+const MODEL_ALIASES = {
+  haiku: HAIKU,
+  sonnet: 'claude-sonnet-5',
+  opus: 'claude-opus-5',
+};
+
+function resolveModel(requested, host) {
+  if (!requested || isProductionHost(host)) return MODEL;
+  const alias = MODEL_ALIASES[String(requested).trim().toLowerCase()];
+  return alias || MODEL;
+}
 const HOURLY_LIMIT = Number(process.env.HOURLY_LIMIT || 3);
 const GLOBAL_DAILY_LIMIT = Number(process.env.GLOBAL_DAILY_LIMIT || 500);
 // The canonical live host. Anything else (the .vercel.app URL, preview
@@ -756,7 +781,8 @@ function formFor(angle) {
   return pool[Math.floor(Math.random() * pool.length)].text;
 }
 
-async function generateBlend({ handle, path, years }) {
+async function generateBlend({ handle, path, years, model }) {
+  const activeModel = model || MODEL;
   // Picked once so the form can be chosen to suit it, rather than the two
   // being drawn independently and occasionally cancelling each other out.
   const angle = angleFor(path, years);
@@ -794,7 +820,7 @@ ${formFor(angle)}
 
   const attempt = async (extraNudge) => {
     const requestBody = {
-      model: MODEL,
+      model: activeModel,
       // Was 200, which truncated mid-JSON when the model emitted any preamble —
       // producing repeatable "unparseable output" on specific paths. This is a
       // ceiling, not a spend: real replies are ~40 tokens.
@@ -804,7 +830,9 @@ ${formFor(angle)}
     };
     // Newer models reject `temperature` outright ("deprecated for this model")
     // rather than just ignoring it, so this can't be a fixed field on the body.
-    if (!process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_MODEL === 'claude-haiku-4-5-20251001') {
+    // Keyed off the model actually in use — the env var says nothing about it
+    // once a per-request override exists.
+    if (activeModel === HAIKU) {
       requestBody.temperature = 0.8;
     }
 
@@ -1033,7 +1061,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const blend = await generateBlend(validation.data);
+    // Refused outright on the production host — see resolveModel.
+    const activeModel = resolveModel(body.model, req.headers.host);
+    const blend = await generateBlend({ ...validation.data, model: activeModel });
     // fire-and-forget: never let logging cost someone their card
     logGeneration({
       at: new Date().toISOString(),
@@ -1048,6 +1078,7 @@ module.exports = async function handler(req, res) {
       unresolvedFaults: blend.unresolvedFaults || 0,
       faultKinds: blend.faultKinds || [],
       angle: blend.angle || null,
+      model: activeModel,
       // Sent by the client so the funnel can tell a first card apart from a
       // reroll of the same one. Inferring it from the regenerate counter would
       // be an estimate; this is the fact.

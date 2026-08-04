@@ -215,6 +215,27 @@ module.exports = async function handler(req, res) {
   }));
   const topFault = Object.entries(faultCounts).sort((a, b) => b[1] - a[1])[0] || null;
 
+  /* The alarm this page did not have. On 4 Aug a model change broke generation
+   * outright and every card came back as the fallback for ten hours. Six
+   * consecutive failures went unnoticed because nothing was counting them, and
+   * the only person who found it was a real visitor who tried five times and
+   * left. Consecutive failures at the head of the log is the cheapest possible
+   * signal and would have shown it within minutes. */
+  const FALLBACK_IDENTITY = 'the unblended';
+  const isFallback = (g) => String(g.identity || '').trim().toLowerCase() === FALLBACK_IDENTITY;
+  let consecutiveFailures = 0;
+  for (const g of generations) {
+    if (!isFallback(g)) break;
+    consecutiveFailures += 1;
+  }
+  const failures24h = generations.filter((g) => {
+    if (!isFallback(g)) return false;
+    const age = Date.now() - new Date(g.at).getTime();
+    return Number.isFinite(age) && age <= 24 * 60 * 60 * 1000;
+  }).length;
+  // Two in a row is noise; three is a pattern worth interrupting for.
+  const alarm = consecutiveFailures >= 3;
+
   const cityCounts = {};
   live.forEach((g) => (g.path || []).forEach((c) => {
     const k = String(c).trim().toLowerCase();
@@ -262,6 +283,10 @@ module.exports = async function handler(req, res) {
   /* The fault tile holds a sentence, not a number. At the tile's 1.5rem it
      filled half the row and shouted louder than the figures around it. */
   .stat b.text { font-size: 0.95rem; line-height: 1.3; font-weight: 600; }
+  .stat b.bad { color: #ff6b5b; }
+  .alarm { border: 1px solid #ff6b5b; border-radius: 10px; padding: 12px 14px; margin: 16px 0; }
+  .alarm b { display: block; color: #ff6b5b; font-size: 1.05rem; }
+  .alarm span { color: #8a8f98; font-size: 0.9rem; }
   /* Handle sits under the timestamp: it was already logged and never shown,
      which meant no way to tell whose card a bad line landed on. */
   .who { color: #8a8f98; font-size: 0.8rem; margin-top: 2px; }
@@ -288,11 +313,13 @@ module.exports = async function handler(req, res) {
   <div class="stat"><b>${saved}</b><span>shared or saved · ${pct(saved, firstCards)}</span></div>
 </div>
 
+${alarm ? `<div class="alarm"><b>generation is failing \u2014 ${consecutiveFailures} in a row</b><span>every recent card came back as the fallback. check the model id and the API key before anything else.</span></div>` : ''}
 <h2>Health</h2>
 <div class="cards">
   <div class="stat"><b>${liveToday.length}</b><span>cards today</span></div>
   <div class="stat"><b>${totalFeedback}</b><span>feedback</span></div>
   <div class="stat"><b>${rerolls}</b><span>rerolls · ${rerollRate} of all cards</span></div>
+  <div class="stat"><b class="${failures24h ? 'bad' : ''}">${failures24h}</b><span>failed outright (24h)</span></div>
   <div class="stat"><b>${withRetries}</b><span>needed a retry</span></div>
   <div class="stat"><b>${withFaults}</b><span>shipped flawed · ${pct(withFaults, live.length)}</span></div>
   <div class="stat"><b class="text">${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>
