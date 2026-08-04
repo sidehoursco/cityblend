@@ -824,7 +824,20 @@ ${formFor(angle)}
     }
 
     const json = await res.json();
-    const text = json.content?.[0]?.text || '';
+    /* The FIRST text block, not block zero. Sonnet returned nothing usable on
+     * every request until this changed: newer models can put other block types
+     * (thinking, tool use) ahead of the prose, so content[0].text was undefined,
+     * the parse failed, and every card fell through to "this one confused even
+     * the model". The failure looked like the model being bad at the task; it
+     * was this line. */
+    const textBlock = (json.content || []).find((b) => b && b.type === 'text' && typeof b.text === 'string');
+    const text = textBlock ? textBlock.text : '';
+    if (!text) {
+      console.error('no text block in model response:', JSON.stringify({
+        stop_reason: json.stop_reason,
+        blockTypes: (json.content || []).map((b) => b && b.type),
+      }));
+    }
 
     // Take the first {...} block rather than requiring the whole response to be
     // JSON. The prompt asks for bare JSON, but it also asks the model to check
