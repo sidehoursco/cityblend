@@ -119,6 +119,21 @@ Line quality is the open problem, and the single most important thing learned ab
 
 Accidental words in the demonym are **fine** and sometimes the best part: "the monsterdammer" landed.
 
+### The reroll failure — the strongest real signal so far (week 5, evening)
+
+Two real users rerolled hard and posted nothing. Their logs are the most useful evidence the project has, because **rerolling does not produce a different joke — it produces the same joke reworded**:
+
+- One person generated **9 cards, every one named "the caracelonian"**, and 8 of 9 opened with the word "spent". Two were near-identical: "spent five years auditioning german cities before deciding barcelona was the actual answer" and "…before admitting barcelona was the point."
+- Another generated **10 cards**, all resolving to the same beat about Lisbon winning: "lisbon won" / "lisbon always wins" / "lisbon knew better".
+
+Both bursts happened **after** the rotating FORM constraint shipped, so that mechanism is not producing enough variety on rerolls. The angle and form are drawn per request with no memory of what the previous attempt produced, and the model has no way to know it is being asked again. A reroll should probably be told what it is replacing, or be forced onto a different angle/form than the one just used — neither happens today.
+
+This reframes the whole quality problem. The failure is not only "is one line good" but "does the second attempt differ from the first" — and someone who rerolls nine times has told you very clearly that the first eight were not postable.
+
+### The funnel's last step is unmeasured, and it is fixable
+
+`track('share')` / `track('download')` only increment a counter — no timestamp, no card, no handle. So there is no way to tell whether a specific person saved a specific card, and every claim about "how many people shared" in week 5 came from Sofia's memory of seeing reshares, never from data. Logging each save/share as an entry (time + handle, same shape as the content log) would close this and let quality be tied to behaviour. Until it exists, treat any share-rate number as anecdote.
+
 ### Model choice is still open, and the prompt confounds it
 
 Haiku vs Sonnet has been tested three times and every result was invalid: the first through a response-parser bug, the second through `max_tokens` sized for a non-thinking model, and the third on a sample too small to mean anything (8 lines, Haiku ahead 11–9). **Sofia's own objection is the important one: the prompt was written while iterating against Haiku.** Roughly twenty of its constraints exist to correct Haiku failure modes, and Anthropic's migration guidance says prompts written for an older model are often too prescriptive for a newer one and actively reduce its output quality. So a straight model swap tests a stronger model wearing a weaker one's corrective braces. **A real comparison needs a third arm: the same model on a de-prescribed prompt.** The mechanism is built and safe — `?model=sonnet|haiku|opus` on the test host, refused outright on cityblend.app.
