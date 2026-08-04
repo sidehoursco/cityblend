@@ -192,6 +192,14 @@ module.exports = async function handler(req, res) {
    * were made but whether anyone shared one without being asked. Percentages
    * are against the step above, so each number answers "how many of the people
    * who got this far went on to the next thing". */
+  /* Kept as one funnel step, but broken out in Health. The two are not equally
+   * good evidence: a share sheet that completes means the person picked a
+   * destination to send the card to, which is the closest thing we have to
+   * intent to post. A download only means a file landed on a disk. Neither
+   * tells us whether anything was actually posted — the OS never reveals which
+   * target was chosen, and a posted card is a flat image whose readers arrive
+   * as untraceable `direct` traffic. So this is a better proxy, not
+   * attribution, and no number on this page can say who shared. */
   const saved = counters.shares + counters.downloads;
   const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—');
 
@@ -320,6 +328,8 @@ ${alarm ? `<div class="alarm"><b>generation is failing \u2014 ${consecutiveFailu
   <div class="stat"><b>${totalFeedback}</b><span>feedback</span></div>
   <div class="stat"><b>${rerolls}</b><span>rerolls · ${rerollRate} of all cards</span></div>
   <div class="stat"><b class="${failures24h ? 'bad' : ''}">${failures24h}</b><span>failed outright (24h)</span></div>
+  <div class="stat"><b>${counters.shares}</b><span>opened a share sheet</span></div>
+  <div class="stat"><b>${counters.downloads}</b><span>downloaded the file</span></div>
   <div class="stat"><b>${withRetries}</b><span>needed a retry</span></div>
   <div class="stat"><b>${withFaults}</b><span>shipped flawed · ${pct(withFaults, live.length)}</span></div>
   <div class="stat"><b class="text">${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>

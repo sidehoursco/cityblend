@@ -487,8 +487,12 @@ const HINT_HOLD = IS_IOS
 // describing a button that can't do what it says.
 const NO_DOWNLOAD = IN_APP_BROWSER && !CAN_SHARE_FILES;
 
+// Names saving as well as sending. The share-sheet route is the only one iOS
+// has — <a download> doesn't work there, which is why this branch exists — so
+// someone who just wants the picture and doesn't know a share sheet contains
+// "Save Image" had nothing telling them the button was for them too.
 const HINT_BEFORE = CAN_SHARE_FILES
-  ? 'instagram, whatsapp, wherever'
+  ? 'instagram, whatsapp, or save to photos'
   : NO_DOWNLOAD
     ? HINT_HOLD
     : 'or right-click the card to save it';
