@@ -818,6 +818,10 @@ The shape this line must take. This is not a suggestion and it is not about cont
 ${formFor(angle)}
 </form>`;
 
+  /* Diagnostics for why an attempt produced nothing. Surfaced only on the test
+   * host (see the handler), because "it sometimes returns nothing" is not
+   * something you can fix from a fallback card. */
+  const failures = [];
   const attempt = async (extraNudge) => {
     const requestBody = {
       model: activeModel,
@@ -865,6 +869,7 @@ ${formFor(angle)}
         stop_reason: json.stop_reason,
         blockTypes: (json.content || []).map((b) => b && b.type),
       }));
+      failures.push({ why: 'no-text-block', stop: json.stop_reason, blocks: (json.content || []).map((b) => b && b.type) });
     }
 
     // Take the first {...} block rather than requiring the whole response to be
@@ -882,8 +887,11 @@ ${formFor(angle)}
         return { identity: String(parsed.identity).toLowerCase(), line: String(parsed.line).toLowerCase() };
       }
       console.error('model JSON missing identity/line:', text);
+      failures.push({ why: 'missing-fields', stop: json.stop_reason, text: String(text).slice(0, 500) });
+      return null;
     } catch (err) {
       console.error('unparseable model output:', JSON.stringify({ stop_reason: json.stop_reason, text }));
+      failures.push({ why: 'unparseable', stop: json.stop_reason, text: String(text).slice(0, 500) });
     }
     return null;
   };
@@ -1025,7 +1033,8 @@ ${formFor(angle)}
   }
 
   if (out) out.angle = angleId;
-  return out || { identity: 'the unblended', line: 'this one confused even the model — try again' };
+  if (out) out.failures = failures;
+  return out || { identity: 'the unblended', line: 'this one confused even the model — try again', failures };
 }
 
 module.exports = async function handler(req, res) {
@@ -1093,6 +1102,8 @@ module.exports = async function handler(req, res) {
       years: validation.data.years,
       remaining: limits.remaining,
       limit: limits.limit,
+      // Test host only. Never on cityblend.app.
+      ...(isProductionHost(req.headers.host) ? {} : { _debug: { model: activeModel, failures: blend.failures || [] } }),
     });
   } catch (err) {
     console.error(err);
