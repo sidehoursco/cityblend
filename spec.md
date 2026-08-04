@@ -102,6 +102,27 @@ People type city names inconsistently ("MOSCOW", "moscow", "Moscow"), so the car
 
 Title Case over all-lowercase because the card's own reference argues for it: real metro maps set station names in Title Case, and the card no longer reads as "low effort" now that it's high-contrast and polished, which was the main thing the lowercase treatment bought. Still an open aesthetic call — flipping the constant to `'lower'` reverses it everywhere. Verified to handle `NOVARA`→`Novara`, `san sebastián`→`San Sebastián`, CJK unchanged, and Turkish dotted-İ correctly.
 
+## What "good" actually means — calibrated against real judgements (week 5)
+
+Line quality is the open problem, and the single most important thing learned about it is **who decides**. Across three prompt-tuning rounds in one session, Claude scored its own changes as improvements and Sofia scored the same output as regressions or neutral — twice with a mechanism that was identifiable afterwards. The failure was not taste in the abstract; it was reading the rule that had just been written rather than the line. **Any future change to line quality has to be judged blind by Sofia, not by whoever wrote the change.** The blind format that worked: same 3–4 real paths from the content log, two samples per variant, shuffled and unlabelled, ranked within each path.
+
+**What she consistently rates well**, from actual rankings rather than theory:
+- **Two things held in tension.** "sounds like ambition. looks more like restlessness"; eighteen years in Monaco spent talking about the two in Paris; "talks monaco glamour, lives above a canal like everyone else". The gap IS the joke, and it usually needs two beats — an early rule telling the model to stop at the punchline made it tidy its way out of the joke and had to be reverted.
+- **A claim about the person that the path can't prove.** "spent 18 years in monaco calling it temporary" beats "ankara lasted one year. milan lasted seven" — the second is two facts the card already prints.
+- **A compressed image.** "a boomerang with a layover."
+
+**What she consistently rates badly:**
+- Route restatement in any form.
+- **Singling out one city.** "one year in ankara, wisely didn't linger" was marked down for this specifically. Not currently encoded anywhere.
+- Lines needing a second read. "tells it like a decade abroad. it wasn't." — she didn't get it. That already violates the first-read rule in the prompt, so it's an enforcement gap, not a missing rule.
+- Claims that don't parse. "milan got forgiven twice" — forgiven for what?
+
+Accidental words in the demonym are **fine** and sometimes the best part: "the monsterdammer" landed.
+
+### Model choice is still open, and the prompt confounds it
+
+Haiku vs Sonnet has been tested three times and every result was invalid: the first through a response-parser bug, the second through `max_tokens` sized for a non-thinking model, and the third on a sample too small to mean anything (8 lines, Haiku ahead 11–9). **Sofia's own objection is the important one: the prompt was written while iterating against Haiku.** Roughly twenty of its constraints exist to correct Haiku failure modes, and Anthropic's migration guidance says prompts written for an older model are often too prescriptive for a newer one and actively reduce its output quality. So a straight model swap tests a stronger model wearing a weaker one's corrective braces. **A real comparison needs a third arm: the same model on a de-prescribed prompt.** The mechanism is built and safe — `?model=sonnet|haiku|opus` on the test host, refused outright on cityblend.app.
+
 ## Tone / voice
 
 Single consistent voice for all outputs. No tone switch/toggle in v1.
