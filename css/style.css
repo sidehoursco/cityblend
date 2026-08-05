@@ -863,3 +863,60 @@ input[type="number"]:focus {
   white-space: nowrap;
   border: 0;
 }
+
+/* The wait.
+   ~9s per card now (13 on a cold start), because the model writes five jokes
+   instead of one. A greyed-out button is indistinguishable from a dead page at
+   that length, and someone who gives up at second seven never sees the card
+   they already paid for. So the wait gets drawn rather than hidden — a line
+   being travelled, which is the card's own language. */
+.blending {
+  margin: 14px 0 0;
+}
+
+.blending-track {
+  position: relative;
+  height: 2px;
+  background: var(--accent-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Travels, pauses, travels — a route being ridden rather than a bar filling to
+   a percentage we cannot actually know. Honest about being indeterminate. */
+.blending-dot {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+  animation: blending-run 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes blending-run {
+  0%   { left: 0; }
+  45%  { left: calc(100% - 8px); }
+  55%  { left: calc(100% - 8px); }
+  100% { left: 0; }
+}
+
+.blending-text {
+  margin: 10px 0 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.blending-sub {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Respecting this is not optional: a dot sliding back and forth for thirteen
+   seconds is exactly the kind of motion that triggers vestibular symptoms. The
+   status text still updates, so nothing is lost by holding it still. */
+@media (prefers-reduced-motion: reduce) {
+  .blending-dot { animation: none; left: calc(50% - 4px); }
+}

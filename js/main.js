@@ -19,6 +19,8 @@ const resultLine = document.getElementById('result-line');
 const resultRoute = document.getElementById('result-route');
 const regenerateBtn = document.getElementById('regenerate-btn');
 const remainingNote = document.getElementById('remaining-note');
+const blending = document.getElementById('blending');
+const blendingText = document.getElementById('blending-text');
 const saveBtn = document.getElementById('save-btn');
 const resultImage = document.getElementById('result-image');
 const saveHint = document.getElementById('save-hint');
@@ -394,11 +396,50 @@ function buildRoute(container, path, years) {
   });
 }
 
+/* Status text that changes while waiting.
+ *
+ * Timed, not real progress — the API returns once and there is nothing
+ * partial to report, so pretending to a percentage would be a lie. What the
+ * changes are actually for is proof of life: text that moves says the page is
+ * working, text that sits still says it has died, and at nine seconds people
+ * decide which of those they are looking at.
+ *
+ * The middle line names one of their own cities. It costs nothing and it is
+ * the moment the wait stops feeling generic — it is visibly working on THEIR
+ * route, which buys more patience than any spinner. */
+let blendingTimers = [];
+
+function stopBlending() {
+  blendingTimers.forEach(clearTimeout);
+  blendingTimers = [];
+  blending.hidden = true;
+}
+
+function startBlending(payload) {
+  const cities = [payload.birthCity, ...(payload.betweenCities || []).map((c) => c.city), payload.currentCity]
+    .map((c) => String(c || '').trim())
+    .filter(Boolean);
+  // Not the current city: the one before it is the more surprising choice, and
+  // the point is to show we read the whole route rather than just the last box.
+  const pick = cities.length > 2 ? cities[cities.length - 2] : cities[0];
+  const steps = [
+    [0, 'reading your route'],
+    [2200, pick ? `thinking about ${pick.toLowerCase()}` : 'thinking about your cities'],
+    [5200, 'writing a few different versions'],
+    [8600, 'picking the best one'],
+    [13000, 'almost there'],
+  ];
+  stopBlending();
+  blending.hidden = false;
+  blendingTimers = steps.map(([ms, text]) => setTimeout(() => { blendingText.textContent = text; }, ms));
+}
+
 function setLoading(isLoading) {
   submitBtn.disabled = isLoading;
   regenerateBtn.disabled = isLoading;
   submitBtn.textContent = isLoading ? 'blending...' : 'generate my blend';
   regenerateBtn.textContent = isLoading ? 'blending...' : 'regenerate';
+  if (!isLoading) stopBlending();
 }
 
 // isRegenerate is passed through to the server purely so the content log can
@@ -407,6 +448,7 @@ function setLoading(isLoading) {
 // rather than of people.
 async function generate(payload, isRegenerate) {
   setLoading(true);
+  startBlending(payload);
   formStatus.hidden = true;
 
   try {

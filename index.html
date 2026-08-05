@@ -191,6 +191,20 @@
         </div>
 
         <button type="submit" id="submit-btn">generate my blend</button>
+        <!-- The wait, made visible.
+             A card now takes ~9s, sometimes 13 on a cold start, because it is
+             writing five different jokes instead of one. The only feedback
+             before this was the button turning grey, which at nine seconds
+             reads as a page that has died rather than one that is working —
+             and someone who closes the tab at second seven never sees the
+             card at all. Built as a route being drawn stop by stop, because
+             that is the card's own visual language and it makes the wait look
+             deliberate instead of broken. -->
+        <div class="blending" id="blending" hidden aria-live="polite">
+          <div class="blending-track"><span class="blending-dot"></span></div>
+          <p class="blending-text" id="blending-text">reading your route</p>
+          <p class="blending-sub">this one takes a few seconds — keep the page open</p>
+        </div>
         <!-- Spec calls for one plain disclosure line near the form, since
              submissions are stored to review and improve the generated lines.
              Deliberately under the button, not above it: it's honest without
