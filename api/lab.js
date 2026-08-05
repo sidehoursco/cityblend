@@ -101,6 +101,25 @@ module.exports = async function handler(req, res) {
     system,
     messages: [{ role: 'user', content: user }],
   };
+
+  /* Effort, and why it is the only cost lever worth having here.
+   *
+   * On the thinking models about 80% of the bill is output tokens, and most of
+   * those are thinking rather than the four short lines we actually keep. The
+   * old way to cap that was `thinking.budget_tokens`, which is removed on the
+   * current models and returns a 400 — `output_config.effort` replaces it.
+   *
+   * Passed through rather than fixed so the sweep can measure what each level
+   * costs and whether the cheap ones are good enough, instead of guessing. */
+  if (body.effort) {
+    requestBody.output_config = { effort: String(body.effort) };
+  }
+  // Thinking off is accepted only at effort `high` or below on Opus 5; above
+  // that it is a 400. Sent verbatim so the sweep sees the real error rather
+  // than a silently rewritten request.
+  if (body.thinking) {
+    requestBody.thinking = body.thinking;
+  }
   // Only Haiku still accepts it; newer models reject the field outright rather
   // than ignoring it, so it cannot be set unconditionally.
   if (model === MODEL_ALIASES.haiku && body.temperature != null) {
