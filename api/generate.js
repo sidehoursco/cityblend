@@ -1069,7 +1069,7 @@ ${formFor(angle)}
     // Counted before anything can go wrong with parsing: the tokens were spent
     // whether or not the reply turns out to be usable, and a budget that only
     // counts successes is not a budget.
-    recordSpend(activeModel, json.usage);
+    await recordSpend(activeModel, json.usage);
     /* The FIRST text block, not block zero. Sonnet returned nothing usable on
      * every request until this changed: newer models can put other block types
      * (thinking, tool use) ahead of the prose, so content[0].text was undefined,
@@ -1351,8 +1351,23 @@ module.exports = async function handler(req, res) {
      * the only way the Haiku-vs-Opus question gets answered by real people
      * instead of by one tired judge reading jokes in a spreadsheet. */
     const cardId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    // fire-and-forget: never let logging cost someone their card
-    logGeneration({
+    /* Awaited, not fire-and-forget.
+     *
+     * The old comment here said logging must never cost someone their card, so
+     * the write was left un-awaited — but a serverless function is frozen the
+     * moment the response is sent, which can kill the write mid-flight. It
+     * usually won the race, which is worse than always losing it: the first
+     * Opus card on production returned perfectly to the caller and never
+     * reached the log or the spend counter, with nothing to show anything had
+     * gone wrong.
+     *
+     * That is not a cosmetic loss any more. Share attribution joins a share
+     * back to the card by id, so a card missing from the log can never be
+     * counted as shared, and the daily budget reads the spend key, so a lost
+     * write is spend the cap cannot see. The intent of the original comment is
+     * preserved by the try/catch: a logging failure still cannot cost anyone
+     * their card, it just no longer costs us the record of it. */
+    await logGeneration({
       at: new Date().toISOString(),
       cardId,
       host: req.headers.host || null,
