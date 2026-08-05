@@ -381,3 +381,209 @@ Note: this maps the ~10-13 total estimated hours onto the stated weekly time bud
 | (never moved case) | one city only | technically an expat of nowhere | chose loyalty over adventure, no notes |
 
 Note: Mira/Elena/Noor/Diego/Theo are placeholder names standing in for real friends — their paths were written from Sofia's memory, not confirmed by them, so small inaccuracies are possible. This file is public, so real names/data about other people shouldn't go in it; use placeholders like these for any future test cases too.
+
+---
+
+## The line-quality rebuild (week 6, 2–5 Aug 2026)
+
+The card design and the form were settled. The generated line — the actual
+product — was not. A friend burned all five generations and liked only the
+fifth; the log showed strangers doing the same and posting nothing. This is
+what three rounds of blind judging found, including the parts that went the
+opposite way to what was expected.
+
+### The diagnosis, measured rather than guessed
+
+Across 89 real cards in the content log:
+
+- **44% of every line ever generated began with the word "spent."** 48%
+  contained "years." One sentence stem was most of the product.
+- The full template — `spent [number] [years/cities] [gerund], then/anyway/still
+  [pivot]` — was **44% of all output**.
+- Rerolls were not different jokes. One person got **9 cards, one identity,
+  8 opening with "spent"**; another got 10 variations of "lisbon won."
+
+Four causes, in order of how much they mattered:
+
+1. **Asking for one line returns the most probable line.** A stateless
+   single-shot request has no pressure to produce anything but the safest joke,
+   and the model cannot see its own previous answer, so rerolling asks the same
+   question again. Comedy lives in the tail; we were sampling the mode.
+2. **The prompt was 2,274 words and about half of it was prohibition** —
+   fifteen separate bans. That template was not a failure of the prompt, it was
+   the *unique local optimum* satisfying every constraint at once. More rules
+   produced more uniformity.
+3. **Nothing in the pipeline ever selected for funny.** The scoring function
+   counted faults and kept the candidate with fewest — a compliance filter
+   bolted to a modal-joke generator.
+4. **Haiku vs Sonnet had never actually been tested.** Every earlier comparison
+   was confounded by a parsing bug, a `max_tokens` bug, or a prompt written
+   against Haiku's failure modes.
+
+### What three rounds of blind judging actually showed
+
+Same protocol each round: real paths from the log, arms shuffled and unlabelled,
+ranked by the one person who can judge this. Scored by Borda count against a
+permutation test.
+
+| Round | Arms | Result |
+|---|---|---|
+| 1 | 5 prompt/model combinations | **p = 0.77 — nothing separated them** |
+| 2 | specificity rule, notes step, Opus | p = 0.57 — still noise |
+| 3 | Haiku vs Sonnet vs Opus, same prompt, 12 paths | **p = 0.042 — Opus wins, 9 of 12** |
+
+**Three things were expected and turned out wrong:**
+
+- **Cutting the prompt did not make the lines better.** It worked exactly as
+  predicted mechanically — "spent" fell from 50% to 3–7% — and made no
+  difference to whether a human liked the result. *Killing a template is not the
+  same as being funny.* Shipping the rewrite on that statistic alone would have
+  been wrong, and nearly happened.
+- **Sonnet is not the middle option it looks like.** Round 1 suggested it was
+  strong; twelve paths put it at 27.0 against Haiku's 28.5, both at chance. The
+  earlier read was small-sample noise.
+- **The specificity rule alone made Haiku worse** — last of four. Only the rule
+  *plus* the notes step helped.
+
+### What actually moved the judging
+
+Every line the judge picked contained **something true about a place that was
+not in the input** — Monaco tipping, Lyubertsy being a suburb nobody claims,
+Belgrade coffee outlasting the afternoon. Every line ranked last was a
+restatement of the route.
+
+The mechanism is **retrieval, not instruction**. The model knows these things
+and will not reach for them unless made to write them down first. Hence the
+`notes` step: three facts about the cities, written before any joke. Asking for
+the same thing as a rule, without the writing-down, made things worse.
+
+Two corrections from the judge that reframed this, both right:
+
+- *"I disagree that Moscow → Belgrade didn't have good material."* Correct — the
+  material was never short, the model just wasn't reaching for it. That is a
+  retrieval failure, not a thin path.
+- The path where every arm did okay (Asti/Monaco) was gifted **18 years in
+  Monaco** — a number *printed on the card*. The one path that looked healthy
+  was winning on card-visible data, which is the disease itself.
+
+### The failure mode the fix created
+
+Asked for "something true about a place," the bigger models reach for the most
+famous fact about the most famous city. **"Dinner at ten" appeared on 7 of 12
+paths.** The split is instructive: Opus 5/60, Sonnet 5/60, **Haiku 0/61** — the
+*better* models converge harder.
+
+That is the same disease in a better costume, and it is invisible one card at a
+time — the judge liked several of those lines individually. Only the log can see
+it. Countered structurally, not with a ban: the slate must use a **different
+note for each line**.
+
+### Judging is not the instrument for everything
+
+At ~24 cards/day an A/B on share rate needs months to reach significance. That
+is why the model choice was ultimately made on the blind evidence plus cost,
+**not** on a production experiment — and why a share-rate A/B was designed,
+built, and then deliberately not used as the deciding mechanism.
+
+A tie is also an answer: if two variants cannot be told apart in ten tries, take
+the cheaper, faster one and close the question.
+
+### What shipped
+
+- **A slate of five jokes per call**, required to be different jokes and to use
+  different notes. Reroll is an array index: instantly different, free, and it
+  no longer consumes the hourly allowance. Someone who rerolls five times used
+  to cost five API calls and now costs one.
+- **Three candidate identities**, same reasoning, picked by the existing blend
+  validator. Compressing V1's identity spec had cost real accuracy — half the
+  cards came back with a blend that had quietly dropped a city.
+- **Prompt V2**, ~600 words, with V1 kept whole behind `PROMPT_VERSION=v1` — in
+  the file, not in git history, because reverting under pressure should not
+  involve finding a commit.
+- **Opus 5 at `effort: low`** for every card, via `OPUS_SHARE`, capped by
+  `DAILY_BUDGET_USD` with automatic Haiku fallback.
+- **Share attribution**: every card carries an id; every share, download and
+  reroll reports it back.
+
+### Why `effort: low` is safe here specifically
+
+81% of an Opus card's cost is output tokens, most of them thinking. At `low` the
+output is 244–284 tokens and the visible answer is ~250 — almost no hidden
+thinking remains, and the notes survive intact with the same specificity.
+
+**The notes step is externalised thinking.** The knowledge is in the visible
+output, not in hidden deliberation, so cutting deliberation does not cut
+retrieval. This reasoning does not generalise to a prompt without a notes step.
+
+Measured: 2.3× cheaper and 2.1× faster than default effort.
+
+### Latency is the real cost, and it is not fixable
+
+| | first card | each reroll |
+|---|---|---|
+| Before | 2.4–3.0s | 2.4–3.0s |
+| Now (Opus + slate) | **9.3–9.6s**, ~13s cold | **0s** |
+
+Not caused by the slate — three candidates took the same time as five. Opus is
+simply ~2× slower per token. **Fast mode would have solved it and is unavailable
+on this account** (fast-mode rate limit of 0).
+
+Someone who rerolls five times waits *less* in total than before, but the wait
+is front-loaded, before they have seen anything — which is where people leave.
+This is an accepted, unresolved risk. The measurement for it is **cards with no
+follow-up event at all**: every card has an id and share/download/reroll all
+report it, so a card that goes nowhere is now visible without needing a control
+group.
+
+### Four production bugs found by testing, all pre-existing or self-inflicted
+
+1. **The escape-framing rule had been inert since launch.** "bilbao was the
+   actual escape route" shipped on a Donetsk → Mariupol → Sevastopol → Bilbao
+   path — the card that put the rule in this spec — and was never caught,
+   because the regex tested `escaped` and the line said `escape`. The rule
+   existed, was correct, and did nothing on the one line it was written for.
+2. **JSON was parsed from the first `{` to the last `}`**, which broke whenever
+   the model emitted two objects — and it does, writing an answer, then "Wait,
+   that's 12 words, let me cut to 8," then a corrected one. The span swallowed
+   both, parsed as nothing, and shipped "this one confused even the model" for a
+   reply the model had got right on the second attempt.
+3. **The stats page read two pipeline slots that were never fetched**, so spend
+   showed $0.00 and the share table sat empty while everything upstream worked.
+4. **Fire-and-forget writes were being dropped.** A serverless function is
+   frozen the moment it responds, so an un-awaited write can be killed. It
+   *usually* won the race, which is worse than always losing — the first Opus
+   card on production returned perfectly and reached neither the log nor the
+   spend counter. Share attribution joins on the card being in the log, and the
+   budget cap reads the spend key, so one missing `await` was simultaneously a
+   monitoring bug and a cost-control bug.
+
+**The lesson that generalises:** every one of these was found by testing the
+checks against *the real content log* rather than against invented examples. The
+first dedupe attempt compared opening words and would have passed all three of
+the real "lisbon won / lisbon always wins / lisbon knew better" duplicates.
+
+### Method notes worth keeping
+
+- **Blind, always.** Arms shuffled and unlabelled, and objective measurements
+  withheld until after judging so they cannot bias the read.
+- **An experiment must not be able to reach production.** A throwaway `/api/lab`
+  endpoint took the prompt in the request body, 404'd on the live host, and
+  required a secret. Prompt iteration then needed no deploys and no API key on
+  a laptop.
+- **Preview deployments are the place to verify**, via a Vercel bypass secret
+  rather than by disabling protection. Production and the test host are the
+  same deployment, so a branch is the only way to test before going live.
+- **Ship one change at a time.** The slate went out with `OPUS_SHARE=0`, was
+  verified on production, and only then was the model switched — so a failure
+  in either would have been attributable to one of them.
+
+### Costs after this work
+
+Opus 5 is **$5/$25 per million tokens** — an earlier note in `COSTS.md` had it
+at $15/$75, 3× too high, and that figure was being used to argue Opus was
+unaffordable. At `effort: low` a card costs **~$0.016**, about **$11.50/month**
+at current traffic, with rerolls free.
+
+Spend is now metered from real token usage rather than estimated, and
+`DAILY_BUDGET_USD` caps it in **dollars, not calls** — 500 calls is $1.15 of
+Haiku or $18 of Opus, the same cap with wildly different bills.
