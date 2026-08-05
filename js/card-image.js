@@ -76,20 +76,6 @@ const TEXT_MUTED = '#78848C';
 
 function paletteFor(data) {
   if (data && data.theme === 'field') {
-    return {
-      bg: data.color,
-      text: '#14161A',
-      soft: '#14161A',
-      // 82%: at 62% this measured 3.21:1 on the lilac card, an AA failure on
-      // the smallest type. Worst case across all nine colours is now 4.73:1.
-      muted: 'rgba(20, 22, 26, 0.82)',
-      accent: '#14161A',
-      // On a bright card the route dot has to punch a hole in the line the way
-      // it does on the dark one — so the "hole" colour is the card, not ink.
-      hole: data.color,
-    };
-  }
-  if (data && data.theme === 'field') {
     // The part that sits ON the colour. Dark ink clears 6.2:1 on the weakest of
     // the nine, and the muted grey is replaced by ink at 82% — 62% measured
     // 3.21:1 on lilac, an AA failure on the smallest type on the card.
