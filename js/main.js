@@ -37,7 +37,7 @@ const copyLinkBtn = document.getElementById('copy-link-btn');
  * decision, not a correctness one, and the honest way to settle it is to look
  * at both on a phone with a real card in them. Whichever wins becomes the
  * default and this reader goes away. */
-const CARD_THEME = /[?&]theme=bright\b/.test(location.search) ? 'bright' : 'default';
+const CARD_THEME = (/[?&]theme=(bright|deep)\b/.exec(location.search) || [])[1] || 'default';
 
 // Everything the exported PNG needs, kept from the last successful generation.
 let lastCard = null;
@@ -520,6 +520,10 @@ async function generate(payload, isRegenerate) {
     resultCard.style.setProperty('--n', data.path.length);
     resultCard.style.setProperty('--line', lastCard.color);
     resultCard.classList.toggle('theme-bright', CARD_THEME === 'bright');
+    resultCard.classList.toggle('theme-deep', CARD_THEME === 'deep');
+    // Computed rather than done with color-mix so the DOM card and the canvas
+    // derive the ground from one function and cannot drift apart.
+    if (CARD_THEME === 'deep') resultCard.style.setProperty('--card-bg', deepTint(lastCard.color));
     remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;

@@ -54,6 +54,24 @@ const TEXT_MUTED = '#78848C';
  * friends' cards looked identical from any distance. Dark ink on all nine
  * clears 4.5:1 comfortably, which is why the flip is a palette swap rather
  * than a redesign. */
+/* Their colour, taken down to something a card can sit on.
+ *
+ * The bright theme proved a saturated ground cannot work here: the card needs
+ * three levels — ground, text, accent — and on full-strength orange the only
+ * lighter accent available is white, which measures 1.3:1 to 2.6:1 across the
+ * nine colours against the 3:1 a line or ring needs. There is nowhere for the
+ * accent to go, so the badge and the route flatten into the type.
+ *
+ * Deepening the ground instead keeps all four tones and still gives every
+ * person a visibly different card: accent-on-ground lands 6:1 to 11:1 and
+ * white-on-ground 14:1 to 16:1, across all nine. */
+function deepTint(hex) {
+  const f = 0.16;
+  const mix = (i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f);
+  const hh = (n) => n.toString(16).padStart(2, '0');
+  return `#${hh(mix(1))}${hh(mix(3))}${hh(mix(5))}`;
+}
+
 function paletteFor(data) {
   if (data && data.theme === 'bright') {
     return {
@@ -68,6 +86,13 @@ function paletteFor(data) {
       // it does on the dark one — so the "hole" colour is the card, not ink.
       hole: data.color,
     };
+  }
+  if (data && data.theme === 'deep') {
+    const bg = deepTint(data.color);
+    // Everything else is unchanged from the original card on purpose: only the
+    // ground moves, so the hierarchy that made the badge and route read as the
+    // accent survives intact.
+    return { bg, text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: bg };
   }
   return { bg: INK, text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: INK };
 }
