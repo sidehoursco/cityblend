@@ -408,6 +408,14 @@ function buildRoute(container, path, years) {
  * the moment the wait stops feeling generic — it is visibly working on THEIR
  * route, which buys more patience than any spinner. */
 let blendingTimers = [];
+/* When the current request started, or null when nothing is in flight.
+ *
+ * This is the whole abandon measurement: if the page is hidden or closed while
+ * a card is still generating, that person waited and gave up, and without a
+ * beacon they leave no trace at all — indistinguishable from someone who got a
+ * card and didn't like it. Since the card takes ~9 seconds now, telling those
+ * two apart is the difference between a latency problem and a quality one. */
+let requestStartedAt = null;
 
 function stopBlending() {
   blendingTimers.forEach(clearTimeout);
@@ -449,6 +457,7 @@ function setLoading(isLoading) {
 async function generate(payload, isRegenerate) {
   setLoading(true);
   startBlending(payload);
+  requestStartedAt = Date.now();
   formStatus.hidden = true;
 
   try {
@@ -506,9 +515,24 @@ async function generate(payload, isRegenerate) {
     formStatus.hidden = false;
     formStatus.textContent = 'network error, try again.';
   } finally {
+    requestStartedAt = null;
     setLoading(false);
   }
 }
+
+/* visibilitychange, not beforeunload: on mobile — which is nearly all of this
+ * app's traffic — closing a tab or switching apps often fires no unload event
+ * at all, and beforeunload is unreliable on iOS in particular. Hiding the page
+ * is the event that actually happens. sendBeacon inside track() is what makes
+ * it survive the page going away. */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'hidden' || requestStartedAt == null) return;
+  const waited = Date.now() - requestStartedAt;
+  // Cleared so a second hide (app switch and back and away again) can't count
+  // the same person twice.
+  requestStartedAt = null;
+  track('abandon', { ms: waited });
+});
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();

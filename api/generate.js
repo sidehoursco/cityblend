@@ -1340,9 +1340,19 @@ module.exports = async function handler(req, res) {
 
   try {
     // Refused outright on the production host — see resolveModel.
-    const requested = resolveModel(body.model, req.headers.host);
-    // On production the model is chosen here, not by the caller: see pickModel.
-    const activeModel = isProductionHost(req.headers.host) ? await pickModel() : requested;
+    /* The test host now behaves like production unless explicitly told not to.
+     *
+     * It used to fall through to the default model whenever no override was
+     * given, so cityblend.vercel.app quietly served Haiku while cityblend.app
+     * served Opus — same deployment, same code, different cards. Anyone
+     * testing on the .vercel.app URL was evaluating a model the live site was
+     * not using and drawing conclusions from it. A test host that does not
+     * mirror production is worse than no test host at all.
+     *
+     * An explicit `model` still wins off production, which is the only thing
+     * the old behaviour was actually for. */
+    const override = isProductionHost(req.headers.host) ? null : body.model;
+    const activeModel = override ? resolveModel(override, req.headers.host) : await pickModel();
     const blend = await generateBlend({ ...validation.data, model: activeModel });
     /* Identifies this card for the rest of its life. Without it a share is a
      * bare counter — which is how every share figure quoted during launch week

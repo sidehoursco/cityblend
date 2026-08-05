@@ -112,7 +112,7 @@ module.exports = async function handler(req, res) {
     const today = new Date().toISOString().slice(0, 10);
     const counterKeys = [];
     ['prod', 'test'].forEach((scope) => {
-      ['view', 'form_open', 'share', 'download', 'regenerate'].forEach((type) => {
+      ['view', 'form_open', 'share', 'download', 'regenerate', 'abandon'].forEach((type) => {
         counterKeys.push(`stat:${scope}:${type}:total`);
         counterKeys.push(`stat:${scope}:${type}:${today}`);
       });
@@ -129,6 +129,10 @@ module.exports = async function handler(req, res) {
       // without wiping these would leave rows pointing at cards that no longer
       // exist — the referrer bug over again, in a new place.
       counterKeys.push(`log:${scope}:shares`);
+      // The abandon histogram is a hash, so like the referrer hash it is not
+      // covered by the event-type loop above and has to be named. Exactly the
+      // bug that left referrers accumulating across every wipe.
+      counterKeys.push(`stat:${scope}:abandon_ms`);
     });
     // Spend is dated and expires after 48h, so only two keys can exist.
     const yday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -161,6 +165,8 @@ module.exports = async function handler(req, res) {
   const referrers = {};
   let shares = [];
   let spendToday = 0;
+  const abandonBuckets = {};
+  let abandonTotal = 0;
   try {
     const results = await redisPipeline([
       ['LRANGE', CONTENT_LOG_KEY, '0', String(SHOW_GENERATIONS - 1)],
@@ -179,6 +185,8 @@ module.exports = async function handler(req, res) {
       // working perfectly.
       ['LRANGE', SHARE_LOG_KEY, '0', '999'],
       ['GET', `spend:${new Date().toISOString().slice(0, 10)}`],
+      ['HGETALL', 'stat:prod:abandon_ms'],
+      ['GET', 'stat:prod:abandon:total'],
     ]);
     generations = parseList(results[0]);
     feedback = parseList(results[1]);
@@ -193,6 +201,9 @@ module.exports = async function handler(req, res) {
     for (let i = 0; i < flat.length; i += 2) referrers[flat[i]] = Number(flat[i + 1] || 0);
     shares = parseList(results[9]);
     spendToday = Number(results[10]?.result || 0);
+    const af = Array.isArray(results[11]?.result) ? results[11].result : [];
+    for (let i = 0; i < af.length; i += 2) abandonBuckets[af[i]] = Number(af[i + 1] || 0);
+    abandonTotal = Number(results[12]?.result || 0);
   } catch (err) {
     return res.status(500).send(`stats unavailable: ${esc(err.message)}`);
   }
@@ -285,12 +296,25 @@ module.exports = async function handler(req, res) {
     sharedCardIds.add(s.cardId);
     rerollDepths.push(Number(s.lineIndex) || 0);
   });
+  /* Cards that went nowhere.
+   *
+   * Every card carries an id and every share, download and reroll reports it
+   * back, so a card with none of those is one nobody did anything with. It
+   * needs no control group and no statistical significance, which matters
+   * because at this traffic an A/B on share rate would take months.
+   *
+   * What it cannot do on its own is separate "left during the nine-second
+   * wait" from "got the card and shrugged" — both look identical here. The
+   * abandon beacon exists to split those two apart. */
+  const touched = new Set(shares.map((s) => s.cardId));
   const modelRows = {};
   live.filter((g) => g.regenerated !== true).forEach((g) => {
     const key = String(g.model || 'unknown').replace(/^claude-/, '').replace(/-\d{8}$/, '');
-    if (!modelRows[key]) modelRows[key] = { cards: 0, shared: 0, faults: 0, usable: 0 };
+    if (!modelRows[key]) modelRows[key] = { cards: 0, shared: 0, faults: 0, usable: 0, nowhere: 0, withId: 0 };
     modelRows[key].cards += 1;
     if (sharedCardIds.has(g.cardId)) modelRows[key].shared += 1;
+    if (g.cardId && !touched.has(g.cardId)) modelRows[key].nowhere = (modelRows[key].nowhere || 0) + 1;
+    if (g.cardId) modelRows[key].withId = (modelRows[key].withId || 0) + 1;
     if ((g.unresolvedFaults || 0) > 0) modelRows[key].faults += 1;
     modelRows[key].usable += Number(g.usable || 1);
   });
@@ -402,13 +426,18 @@ ${alarm ? `<div class="alarm"><b>generation is failing \u2014 ${consecutiveFailu
   <div class="stat"><b>${medianDepth == null ? '—' : medianDepth}</b><span>median rerolls before sharing</span></div>
   <div class="stat"><b>${avgUsable}</b><span>usable lines per slate (of 5)</span></div>
   <div class="stat"><b>$${spendToday.toFixed(2)}</b><span>spent today</span></div>
+  <div class="stat"><b class="${abandonTotal ? 'bad' : ''}">${abandonTotal}</b><span>left mid-generation</span></div>
 </div>
+<p class="sub">"went nowhere" = a card nobody shared, downloaded or rerolled. "Left mid-generation" is someone who closed the page while it was still working — that one is the wait costing you people, not the joke.</p>
+<div>${Object.entries(abandonBuckets).sort().map(([b, n]) => `<span class="pill">gave up at ${esc(b)} <b>${n}</b></span>`).join('') || '<span class="empty">nobody has abandoned a generation yet</span>'}</div>
 <table>
-  <tr><th>model</th><th>first cards</th><th>shared</th><th>share rate</th><th>shipped flawed</th></tr>
+  <tr><th>model</th><th>first cards</th><th>shared</th><th>share rate</th><th>went nowhere</th><th>shipped flawed</th></tr>
   ${Object.entries(modelRows).sort((a, b) => b[1].cards - a[1].cards).map(([m, r]) => `<tr>
     <td>${esc(m)}</td><td class="num">${r.cards}</td><td class="num">${r.shared}</td>
-    <td class="num">${pct(r.shared, r.cards)}</td><td class="num">${pct(r.faults, r.cards)}</td>
-  </tr>`).join('') || '<tr><td colspan="5" class="empty">nothing yet</td></tr>'}
+    <td class="num">${pct(r.shared, r.cards)}</td>
+    <td class="num">${r.withId ? pct(r.nowhere, r.withId) : '—'}</td>
+    <td class="num">${pct(r.faults, r.cards)}</td>
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">nothing yet</td></tr>'}
 </table>
 
 <h2>Where they came from</h2>

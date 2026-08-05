@@ -11,7 +11,12 @@
  * reason to keep rows. Daily keys expire after 45 days; totals persist.
  */
 
-const ALLOWED = ['view', 'form_open', 'share', 'download', 'regenerate'];
+/* 'abandon' is fired by the client when someone leaves while a card is still
+ * generating. It exists because a card now takes ~9 seconds and the honest
+ * question — is that wait costing us people — cannot be answered any other
+ * way: someone who closes the tab at second seven leaves no trace otherwise,
+ * and looks identical to someone who got a card and shrugged at it. */
+const ALLOWED = ['view', 'form_open', 'share', 'download', 'regenerate', 'abandon'];
 const DAY_TTL = 60 * 60 * 24 * 45;
 const PRODUCTION_HOST = process.env.PRODUCTION_HOST || 'cityblend.app';
 
@@ -79,7 +84,20 @@ module.exports = async function handler(req, res) {
    *
    * Rolling window, same as the content log — this is a working measurement,
    * not an archive. */
-  if ((type === 'share' || type === 'download') && body.cardId) {
+  /* How long they waited before giving up. Counted in buckets rather than
+   * logged per event: the useful question is whether people bail at 5 seconds
+   * or at 12, and a histogram answers that without keeping a row per person. */
+  if (type === 'abandon') {
+    const ms = Number(body.ms);
+    const bucket = !Number.isFinite(ms) ? 'unknown'
+      : ms < 3000 ? '0-3s' : ms < 6000 ? '3-6s' : ms < 10000 ? '6-10s' : ms < 15000 ? '10-15s' : '15s+';
+    commands.push(['HINCRBY', `stat:${scope}:abandon_ms`, bucket, '1']);
+  }
+
+  /* Rerolling counts as engagement, so it belongs in the same log as sharing.
+   * Without it a card someone rerolled four times and then closed looks
+   * exactly like a card nobody touched, and "went nowhere" would overcount. */
+  if ((type === 'share' || type === 'download' || type === 'regenerate') && body.cardId) {
     const cardId = String(body.cardId).slice(0, 32).replace(/[^a-z0-9]/gi, '');
     const idx = Number(body.lineIndex);
     if (cardId) {
