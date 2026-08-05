@@ -128,13 +128,25 @@ module.exports = async function handler(req, res) {
 
   const started = Date.now();
   try {
+    /* Fast mode. Same model, up to ~2.5x the output tokens per second, at
+     * double the per-token price. It exists here because latency is the one
+     * cost that can't be capped after the fact — a visitor staring at a
+     * spinner leaves, and no budget setting brings them back. Whether 2x the
+     * token price is worth halving the wait is a real trade, so it gets
+     * measured rather than assumed. Opus only, and Claude API only. */
+    const headers = {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    };
+    if (body.speed === 'fast') {
+      requestBody.speed = 'fast';
+      headers['anthropic-beta'] = 'fast-mode-2026-02-01';
+    }
+
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(requestBody),
     });
     const json = await upstream.json();
