@@ -60,7 +60,9 @@ function paletteFor(data) {
       bg: data.color,
       text: '#14161A',
       soft: '#14161A',
-      muted: 'rgba(20, 22, 26, 0.62)',
+      // 82%: at 62% this measured 3.21:1 on the lilac card, an AA failure on
+      // the smallest type. Worst case across all nine colours is now 4.73:1.
+      muted: 'rgba(20, 22, 26, 0.82)',
       accent: '#14161A',
       // On a bright card the route dot has to punch a hole in the line the way
       // it does on the dark one — so the "hole" colour is the card, not ink.

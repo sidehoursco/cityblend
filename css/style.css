@@ -249,7 +249,15 @@ body {
   --card-bg: var(--line);
   --card-fg: #14161A;
   --card-fg-soft: #14161A;
-  --card-fg-muted: rgba(20, 22, 26, 0.62);
+  /* 82%, not the 62% this started at.
+     At 62% the route's ORIGIN / n YRS labels measured 3.21:1 against the
+     lilac card — a WCAG AA failure on the smallest type on the card, which
+     is the exact bug caught once already on the dark version (#6E7A83 at
+     4.34:1). Checked against all nine colours rather than a favourite: the
+     worst case is lilac, and 82% puts it at 4.73:1 with the rest above it.
+     80% would technically clear it at 4.57:1; 82% leaves room for the
+     rounding the browser does when compositing. */
+  --card-fg-muted: rgba(20, 22, 26, 0.82);
   --card-accent: #14161A;
 }
 
