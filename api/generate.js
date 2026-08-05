@@ -698,7 +698,13 @@ function lineFaults(line, hasYears, path, years) {
     /\b(wasn'?t|was\s+not|isn'?t|is\s+not|never|hardly|not)\s+(really\s+)?(a|the|their)?\s*choice\b/i,
     /\bnone\s+of\s+(them|these|those)\s+(were|was)\s+(a|the)?\s*choice\b/i,
     /\b(a|the|one)\s+sensible\s+choice\b/i,
-    /\b(fled|escaped)\b/i,
+    // Every inflection, not just the past tense. "bilbao was the actual escape
+    // route" shipped on a Donetsk -> Mariupol -> Sevastopol -> Bilbao path and
+    // this list is the reason that card is in the spec — yet /escaped/ never
+    // matched it, because the card said "escape". The rule existed, was
+    // correct, and quietly did nothing on the one line it was written for.
+    /\b(fled|flee|flees|fleeing)\b/i,
+    /\bescap(e|es|ed|ing)\b/i,
     /\b(got|made\s+it)\s+out\b/i,
     /\blucky\s+to\s+(leave|have\s+left|get\s+out|be\s+out)\b/i,
     /\b(had|forced)\s+to\s+(leave|go)\b/i,
@@ -1204,12 +1210,33 @@ ${formFor(angle)}
    * exactly the failure this release exists to fix. Same opening three words
    * is a crude test and a cheap one; it catches the real cases seen in the log
    * without needing to understand anything. */
-  const openingOf = (line) => String(line).split(/\s+/).slice(0, 3).join(' ');
-  const seenOpenings = new Set();
+  const STOPWORDS = new Set(['a', 'an', 'the', 'and', 'or', 'but', 'to', 'of', 'in', 'on', 'at', 'for',
+    'it', 'its', 'is', 'was', 'be', 'as', 'that', 'this', 'then', 'than', 'with', 'from', 'they',
+    'you', 'their', 'them', 'still', 'about', 'into', 'like', 'so', 'now', 'one']);
+  const contentWords = (line) => new Set(
+    String(line).toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+  );
+  /* Overlap of meaningful words, not the opening phrase.
+   *
+   * Comparing the first three words was the obvious test and it is useless on
+   * the actual data: "lisbon won", "lisbon always wins" and "lisbon knew
+   * better" — three real rerolls the same person got — all differ inside three
+   * words while being one joke told three times. Half the content words in
+   * common catches those, and leaves genuinely different jokes alone: two
+   * lines about the same path that share only "twenty" and "years" score 0.43
+   * and both survive. */
+  const kept = [];
   const distinct = ranked.filter((c) => {
-    const key = openingOf(c.line);
-    if (seenOpenings.has(key)) return false;
-    seenOpenings.add(key);
+    const words = contentWords(c.line);
+    const dupe = kept.some((k) => {
+      let shared = 0;
+      words.forEach((w) => { if (k.has(w)) shared += 1; });
+      const smaller = Math.min(words.size, k.size) || 1;
+      return shared / smaller >= 0.5;
+    });
+    if (dupe) return false;
+    kept.push(words);
     return true;
   });
 
