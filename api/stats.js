@@ -16,6 +16,10 @@
 
 const CONTENT_LOG_KEY = 'log:generations';
 const FEEDBACK_KEY = 'log:feedback';
+// Written by api/event.js. One row per share or download, carrying the card id
+// so it can be joined back to the model and line that produced it — the join
+// that turns "40 shares" into "which cards got shared".
+const SHARE_LOG_KEY = 'log:prod:shares';
 const SHOW_GENERATIONS = 200;
 const SHOW_FEEDBACK = 100;
 
@@ -121,7 +125,14 @@ module.exports = async function handler(req, res) {
       // worth before this was spotted). DEL works on a hash the same as on a
       // counter, so it just needs to be in the list.
       counterKeys.push(`stat:${scope}:referrers`);
+      // Share rows join to the content log by card id, so wiping generations
+      // without wiping these would leave rows pointing at cards that no longer
+      // exist — the referrer bug over again, in a new place.
+      counterKeys.push(`log:${scope}:shares`);
     });
+    // Spend is dated and expires after 48h, so only two keys can exist.
+    const yday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    counterKeys.push(`spend:${today}`, `spend:${yday}`);
 
     const keys = target === 'all' ? [CONTENT_LOG_KEY, FEEDBACK_KEY, ...counterKeys]
       : target === 'generations' ? [CONTENT_LOG_KEY]
@@ -148,6 +159,8 @@ module.exports = async function handler(req, res) {
   let totalFeedback = 0;
   const counters = { views: 0, formOpens: 0, shares: 0, downloads: 0 };
   const referrers = {};
+  let shares = [];
+  let spendToday = 0;
   try {
     const results = await redisPipeline([
       ['LRANGE', CONTENT_LOG_KEY, '0', String(SHOW_GENERATIONS - 1)],
@@ -171,6 +184,8 @@ module.exports = async function handler(req, res) {
     // HGETALL comes back as a flat [field, value, field, value, ...] array
     const flat = Array.isArray(results[8]?.result) ? results[8].result : [];
     for (let i = 0; i < flat.length; i += 2) referrers[flat[i]] = Number(flat[i + 1] || 0);
+    shares = parseList(results[9]);
+    spendToday = Number(results[10]?.result || 0);
   } catch (err) {
     return res.status(500).send(`stats unavailable: ${esc(err.message)}`);
   }
@@ -243,6 +258,43 @@ module.exports = async function handler(req, res) {
   }).length;
   // Two in a row is noise; three is a pattern worth interrupting for.
   const alarm = consecutiveFailures >= 3;
+
+  /* The join that closes the funnel's last step.
+   *
+   * Until now a share was a number with nothing attached: 40 shares told us
+   * people shared and nothing about what. Cards carry an id, share rows carry
+   * the same id, so this finally answers the two questions the whole prompt
+   * rewrite was for — does the better model actually get shared more, and how
+   * many rerolls does someone burn before keeping one.
+   *
+   * Only first cards count as the denominator: a reroll isn't another person,
+   * and dividing shares by rolls is what made the funnel read as nonsense the
+   * first time round. */
+  const byCardId = new Map(live.map((g) => [g.cardId, g]));
+  const sharedCardIds = new Set();
+  const rerollDepths = [];
+  shares.forEach((s) => {
+    if (!byCardId.has(s.cardId)) return;
+    sharedCardIds.add(s.cardId);
+    rerollDepths.push(Number(s.lineIndex) || 0);
+  });
+  const modelRows = {};
+  live.filter((g) => g.regenerated !== true).forEach((g) => {
+    const key = String(g.model || 'unknown').replace(/^claude-/, '').replace(/-\d{8}$/, '');
+    if (!modelRows[key]) modelRows[key] = { cards: 0, shared: 0, faults: 0, usable: 0 };
+    modelRows[key].cards += 1;
+    if (sharedCardIds.has(g.cardId)) modelRows[key].shared += 1;
+    if ((g.unresolvedFaults || 0) > 0) modelRows[key].faults += 1;
+    modelRows[key].usable += Number(g.usable || 1);
+  });
+  const medianDepth = rerollDepths.length
+    ? rerollDepths.slice().sort((a, b) => a - b)[Math.floor(rerollDepths.length / 2)]
+    : null;
+  // How many of the five candidates survive validation and deduping. If this
+  // sits near 1 the slate isn't working and rerolls cost an API call again.
+  const allUsable = live.filter((g) => g.regenerated !== true).map((g) => Number(g.usable || 1));
+  const avgUsable = allUsable.length
+    ? (allUsable.reduce((a, b) => a + b, 0) / allUsable.length).toFixed(1) : '—';
 
   const cityCounts = {};
   live.forEach((g) => (g.path || []).forEach((c) => {
@@ -335,6 +387,22 @@ ${alarm ? `<div class="alarm"><b>generation is failing \u2014 ${consecutiveFailu
   <div class="stat"><b class="text">${topFault ? esc(topFault[0]) : '—'}</b><span>${topFault ? `most common fault (${topFault[1]}×)` : 'no faults recorded'}</span></div>
   <div class="stat"><b>$${estSpend}</b><span>est. api spend</span></div>
 </div>
+
+<h2>Did they share it?</h2>
+<p class="sub">Shares joined to the card that produced them. Denominator is first cards, never rerolls. Cards made before this shipped have no id and can't be joined, so early rows read as 0%.</p>
+<div class="cards">
+  <div class="stat"><b>${sharedCardIds.size}</b><span>cards actually shared</span></div>
+  <div class="stat"><b>${medianDepth == null ? '—' : medianDepth}</b><span>median rerolls before sharing</span></div>
+  <div class="stat"><b>${avgUsable}</b><span>usable lines per slate (of 5)</span></div>
+  <div class="stat"><b>$${spendToday.toFixed(2)}</b><span>spent today</span></div>
+</div>
+<table>
+  <tr><th>model</th><th>first cards</th><th>shared</th><th>share rate</th><th>shipped flawed</th></tr>
+  ${Object.entries(modelRows).sort((a, b) => b[1].cards - a[1].cards).map(([m, r]) => `<tr>
+    <td>${esc(m)}</td><td class="num">${r.cards}</td><td class="num">${r.shared}</td>
+    <td class="num">${pct(r.shared, r.cards)}</td><td class="num">${pct(r.faults, r.cards)}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">nothing yet</td></tr>'}
+</table>
 
 <h2>Where they came from</h2>
 <div>${Object.entries(referrers).sort((a, b) => b[1] - a[1]).slice(0, 15)

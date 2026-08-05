@@ -63,6 +63,36 @@ module.exports = async function handler(req, res) {
     commands.push(['HINCRBY', `stat:${scope}:referrers`, ref, '1']);
   }
 
+  /* Shares and downloads, logged rather than only counted.
+   *
+   * The header comment above says plain counters are enough because nothing
+   * here identifies anyone. That was true and is no longer sufficient: a bare
+   * count can say 40 people shared and nothing about WHAT they shared, so
+   * every share figure quoted during launch week was anecdote dressed as data,
+   * and the question the app exists to answer — do better lines get shared
+   * more — was unanswerable.
+   *
+   * The card id fixes that without collecting anything new about the person:
+   * it's an opaque token minted server-side, and it joins to the content log
+   * entry that already exists, which is where the model, the line and the path
+   * live. lineIndex is how many times they rerolled before keeping this one.
+   *
+   * Rolling window, same as the content log — this is a working measurement,
+   * not an archive. */
+  if ((type === 'share' || type === 'download') && body.cardId) {
+    const cardId = String(body.cardId).slice(0, 32).replace(/[^a-z0-9]/gi, '');
+    const idx = Number(body.lineIndex);
+    if (cardId) {
+      commands.push(['LPUSH', `log:${scope}:shares`, JSON.stringify({
+        at: new Date().toISOString(),
+        type,
+        cardId,
+        lineIndex: Number.isFinite(idx) && idx >= 0 ? Math.min(idx, 50) : 0,
+      })]);
+      commands.push(['LTRIM', `log:${scope}:shares`, '0', '999']);
+    }
+  }
+
   try {
     await redisPipeline(commands);
   } catch (err) {

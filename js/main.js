@@ -171,6 +171,21 @@ function renderExampleCard() {
 
 let lastPayload = null;
 
+/* The rest of the slate the server already generated and validated, plus which
+ * one is currently on screen.
+ *
+ * Rerolling used to cost an API call and return the same joke reworded — one
+ * person got nine cards carrying one identity, eight of them opening with the
+ * same word, and posted none of them. The server now writes five different
+ * jokes in a single call, so a reroll is an array index: instantly different,
+ * free, and it doesn't eat the hourly allowance. */
+let alternates = [];
+let lineIndex = 0;
+// Ties this card to whatever happens to it next. A share used to be a bare
+// counter with no idea which card it came from, which is why no share figure
+// quoted during launch week was worth anything.
+let lastCardId = null;
+
 /* Fire-and-forget funnel counters. sendBeacon where available so the request
  * survives the page being backgrounded — which is exactly what happens on the
  * event that matters most, since navigator.share() hands control to another
@@ -412,6 +427,9 @@ async function generate(payload, isRegenerate) {
     }
 
     lastPayload = payload;
+    alternates = Array.isArray(data.alternates) ? data.alternates.slice() : [];
+    lineIndex = 0;
+    lastCardId = data.cardId || null;
     // Put what they typed in the URL now, so that whatever happens next — a
     // browser switch, a reload, a shared link — starts from here.
     writeStateToUrl(payload);
@@ -455,8 +473,32 @@ form.addEventListener('submit', (event) => {
   generate(collectPayload());
 });
 
+/* Swaps the line for the next one already in hand. Only the line changes — the
+ * demonym, the route and the colour are properties of the path, not of the
+ * joke, and re-rendering them would make a free reroll look like a slow one. */
+function showAlternate() {
+  const next = alternates.shift();
+  lineIndex += 1;
+  lastCard.line = next;
+  resultLine.textContent = next;
+  // The rendered PNG is now stale — it still has the old line baked in.
+  resetImage();
+  prepareImage();
+  // Counted, because a reroll that never reaches the server would otherwise be
+  // invisible: the reroll rate is the clearest read we have on whether the
+  // first card was good enough, and it is the number this release exists to
+  // move. lineIndex travels with the share so we know which one they kept.
+  track('regenerate', { cardId: lastCardId, lineIndex });
+}
+
 regenerateBtn.addEventListener('click', () => {
-  if (lastPayload) generate(lastPayload, true);
+  if (!lastPayload) return;
+  // Only call the API once the pre-generated slate is used up.
+  if (alternates.length) {
+    showAlternate();
+    return;
+  }
+  generate(lastPayload, true);
 });
 
 // Probed once with a throwaway file: navigator.canShare only reports honestly
@@ -655,7 +697,7 @@ async function saveCard() {
     try {
       await navigator.share({ files: [file] });
       // only after the sheet resolves — firing before it would count dismissals
-      track('share');
+      track('share', { cardId: lastCardId, lineIndex });
       nudgeToInstagram();
       return;
     } catch (err) {
@@ -683,7 +725,7 @@ async function saveCard() {
     // path below, which also can't know whether the file was kept. Leaving it
     // untracked would make the save rate look worst for Instagram traffic,
     // which is most of the traffic.
-    track('download');
+    track('download', { cardId: lastCardId, lineIndex });
     return;
   }
 
@@ -695,7 +737,7 @@ async function saveCard() {
   a.remove();
   // NOT revoked here: revoking synchronously after click cancels the download.
   // The URL is released on the next generation instead.
-  track('download');
+  track('download', { cardId: lastCardId, lineIndex });
   nudgeToInstagram();
 }
 
