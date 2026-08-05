@@ -172,6 +172,13 @@ module.exports = async function handler(req, res) {
       ['GET', 'stat:prod:share:total'],
       ['GET', 'stat:prod:download:total'],
       ['HGETALL', 'stat:prod:referrers'],
+      // Indices 9 and 10. Keep these last and keep them in step with the reads
+      // below — the first version of this shipped the reads without the
+      // commands, so both silently returned undefined and the page showed
+      // $0.00 spend and an empty share table while everything upstream was
+      // working perfectly.
+      ['LRANGE', SHARE_LOG_KEY, '0', '999'],
+      ['GET', `spend:${new Date().toISOString().slice(0, 10)}`],
     ]);
     generations = parseList(results[0]);
     feedback = parseList(results[1]);
