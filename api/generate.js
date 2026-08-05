@@ -1200,9 +1200,23 @@ ${formFor(angle)}
   /* Rank the slate. Clean lines first, and among clean lines the model's own
    * order is kept — it wrote its best one first often enough to be worth
    * trusting, and nothing here can tell funny from unfunny anyway. */
+  /* Ordered by faults first, then by whether the line fits the card, then by
+   * the model's own preference.
+   *
+   * The length bucket is deliberately a bucket and not a sort key. The card
+   * survives a long line — the canvas measures real wrapped rows and shrinks
+   * the type to fit — but a 19-word line wraps to four rows and shrinks the
+   * whole card to accommodate it, and every line the judge picked across three
+   * rounds was short. Sorting purely by length would ship the shortest line
+   * every time regardless of whether it is the best one; bucketing keeps the
+   * model's ordering intact among lines that fit and only demotes the ones
+   * that cost the layout. Asking the prompt for this again would not work —
+   * both V1 and V2 already say "around 14 words" and Haiku overruns anyway. */
+  const LINE_WORD_BUDGET = 15;
+  const overBudget = (line) => (String(line).trim().split(/\s+/).length > LINE_WORD_BUDGET ? 1 : 0);
   const ranked = out.lines
-    .map((line, i) => ({ line, i, problems: lineProblems(line) }))
-    .sort((a, b) => (a.problems.length - b.problems.length) || (a.i - b.i));
+    .map((line, i) => ({ line, i, problems: lineProblems(line), long: overBudget(line) }))
+    .sort((a, b) => (a.problems.length - b.problems.length) || (a.long - b.long) || (a.i - b.i));
 
   /* Near-duplicate cull, which is the whole point of the exercise. The prompt
    * asks for five different jokes and mostly gets them, but "lisbon won" and
