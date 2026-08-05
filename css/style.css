@@ -222,13 +222,35 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 4cqw;
-  background: #0D1014;
-  color: #F2F4F0;
+  background: var(--card-bg);
+  color: var(--card-fg);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --line: #F2B33D;
   --n: 3;
   --over: max(0, var(--n) - 2);
+
+  /* The card's palette, named so a theme is a variable swap and not a rewrite
+     of every rule. Defaults are the original night-line card. */
+  --card-bg: #0D1014;
+  --card-fg: #F2F4F0;
+  --card-fg-soft: #E4E8E3;
+  --card-fg-muted: #78848C;
+  --card-accent: var(--line);
+}
+
+/* Their own colour as the whole card.
+   The route already hashes to one of nine colours per person, and that was
+   spent on a 2px line — so two friends' cards were indistinguishable from
+   across a room. When five people post on the same night, five visibly
+   different cards read as something spreading; five near-identical dark ones
+   read as one template. Dark ink on all nine passes contrast comfortably. */
+.card.theme-bright {
+  --card-bg: var(--line);
+  --card-fg: #14161A;
+  --card-fg-soft: #14161A;
+  --card-fg-muted: rgba(20, 22, 26, 0.62);
+  --card-accent: #14161A;
 }
 
 .card__inner {
@@ -269,7 +291,7 @@ body {
   font-size: 3.6cqw;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #F2F4F0;
+  color: var(--card-fg);
   line-height: 1;
 }
 
@@ -277,7 +299,7 @@ body {
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 3.2cqw;
   letter-spacing: 0.06em;
-  color: #78848C;
+  color: var(--card-fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -287,7 +309,7 @@ body {
 .c-badge {
   flex: 0 0 auto;
   text-align: center;
-  border: 0.8cqw solid var(--line);
+  border: 0.8cqw solid var(--card-accent);
   border-radius: 50%;
   width: 17cqw;
   height: 17cqw;
@@ -302,7 +324,7 @@ body {
   font-size: 8.4cqw;
   font-weight: 700;
   letter-spacing: -0.04em;
-  color: var(--line);
+  color: var(--card-accent);
   font-variant-numeric: tabular-nums;
 }
 
@@ -312,7 +334,7 @@ body {
   font-size: 2.2cqw;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--line);
+  color: var(--card-accent);
   margin-top: 0.5cqw;
   opacity: 0.85;
 }
@@ -339,7 +361,7 @@ body {
   font-size: calc(4.7cqw - var(--over) * 0.1cqw);
   line-height: 1.3;
   font-weight: 500;
-  color: #E4E8E3;
+  color: var(--card-fg-soft);
   max-width: 27ch;
   margin: 0 0 calc(7cqw - var(--over) * 0.8cqw);
 }
@@ -375,8 +397,8 @@ body {
   height: 2.5cqw;
   border-radius: 50%;
   box-sizing: border-box;
-  background: #0D1014;
-  border: 0.72cqw solid var(--line);
+  background: var(--card-bg);
+  border: 0.72cqw solid var(--card-accent);
   z-index: 1;
 }
 
@@ -387,7 +409,7 @@ body {
   top: 3.5cqw;
   bottom: -1.3cqw;
   width: 0.72cqw;
-  background: var(--line);
+  background: var(--card-accent);
   z-index: 0;
 }
 
@@ -398,8 +420,8 @@ body {
   height: 4.4cqw;
   left: 0.45cqw;
   top: 0.9cqw;
-  background: var(--line);
-  border-color: var(--line);
+  background: var(--card-accent);
+  border-color: var(--card-accent);
 }
 
 .route .city {
@@ -426,13 +448,13 @@ body {
   font-size: 2.6cqw;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #78848C;
+  color: var(--card-fg-muted);
   white-space: nowrap;
   line-height: 1;
   flex: 0 0 auto;
 }
 
-.route li.is-now .meta { color: var(--line); }
+.route li.is-now .meta { color: var(--card-accent); }
 
 /* Two weights on one line, not one uniform string: "and you?" is the tone,
    "cityblend.app" is the instruction, and only the second one needs to survive
@@ -444,13 +466,13 @@ body {
   font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 3cqw;
   letter-spacing: 0.04em;
-  color: #78848C;
+  color: var(--card-fg-muted);
 }
 
 .c-foot b {
   font-size: 3.4cqw;
   font-weight: 700;
-  color: #F2F4F0;
+  color: var(--card-fg);
 }
 
 .cta {
@@ -876,9 +898,12 @@ input[type="number"]:focus {
 
 .blending-track {
   position: relative;
-  height: 2px;
-  background: var(--accent-light);
-  border-radius: 2px;
+  height: 3px;
+  /* Was var(--accent-light) — #E2E4DF on an #EDEFEB page, about a 5%
+     difference, which made the track invisible and left the dot reading as a
+     stray dash rather than something travelling along a line. */
+  background: rgba(20, 22, 26, 0.14);
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -888,8 +913,8 @@ input[type="number"]:focus {
   position: absolute;
   top: -3px;
   left: 0;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--ink);
   animation: blending-run 2.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
@@ -897,8 +922,8 @@ input[type="number"]:focus {
 
 @keyframes blending-run {
   0%   { left: 0; }
-  45%  { left: calc(100% - 8px); }
-  55%  { left: calc(100% - 8px); }
+  45%  { left: calc(100% - 9px); }
+  55%  { left: calc(100% - 9px); }
   100% { left: 0; }
 }
 
@@ -918,5 +943,5 @@ input[type="number"]:focus {
    seconds is exactly the kind of motion that triggers vestibular symptoms. The
    status text still updates, so nothing is lost by holding it still. */
 @media (prefers-reduced-motion: reduce) {
-  .blending-dot { animation: none; left: calc(50% - 4px); }
+  .blending-dot { animation: none; left: calc(50% - 4.5px); }
 }

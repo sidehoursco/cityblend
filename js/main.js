@@ -30,6 +30,15 @@ const saveFallbackSteps = document.getElementById('save-fallback-steps');
 const saveFallbackAlt = document.getElementById('save-fallback-alt');
 const copyLinkBtn = document.getElementById('copy-link-btn');
 
+/* Which card treatment to draw. ?theme=bright makes the card the person's own
+ * colour instead of near-black.
+ *
+ * Behind a parameter rather than switched outright because this is a taste
+ * decision, not a correctness one, and the honest way to settle it is to look
+ * at both on a phone with a real card in them. Whichever wins becomes the
+ * default and this reader goes away. */
+const CARD_THEME = /[?&]theme=bright\b/.test(location.search) ? 'bright' : 'default';
+
 // Everything the exported PNG needs, kept from the last successful generation.
 let lastCard = null;
 // The PNG is rendered as soon as a card exists, not on button press. Two
@@ -491,6 +500,10 @@ async function generate(payload, isRegenerate) {
       path: data.path,
       years: data.years,
       color: lineColorFor(data.path),
+      // Carried into the PNG so the export matches the preview exactly. If they
+      // disagreed, the thing someone chose to share would not be the thing that
+      // got shared.
+      theme: CARD_THEME,
     };
     // a fresh generation invalidates any previously rendered image
     resetImage();
@@ -506,6 +519,7 @@ async function generate(payload, isRegenerate) {
     // spacing compresses off --n; the line colour is the person's own
     resultCard.style.setProperty('--n', data.path.length);
     resultCard.style.setProperty('--line', lastCard.color);
+    resultCard.classList.toggle('theme-bright', CARD_THEME === 'bright');
     remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;

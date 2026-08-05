@@ -44,6 +44,32 @@ const TEXT_SOFT = '#E4E8E3';
    #78848C is 4.97:1 and is already what the handle and footer use. */
 const TEXT_MUTED = '#78848C';
 
+/* The card's palette, resolved per render so the exported PNG matches whatever
+ * the preview is showing. The two must agree exactly: the preview is what
+ * someone decides to share, and the PNG is what actually gets shared, so a
+ * theme that existed in only one of them would be a lie about the product.
+ *
+ * "bright" makes the card the person's own colour. That colour already existed
+ * — the route hashes to one of nine — but it was spent on a 2px line, so two
+ * friends' cards looked identical from any distance. Dark ink on all nine
+ * clears 4.5:1 comfortably, which is why the flip is a palette swap rather
+ * than a redesign. */
+function paletteFor(data) {
+  if (data && data.theme === 'bright') {
+    return {
+      bg: data.color,
+      text: '#14161A',
+      soft: '#14161A',
+      muted: 'rgba(20, 22, 26, 0.62)',
+      accent: '#14161A',
+      // On a bright card the route dot has to punch a hole in the line the way
+      // it does on the dark one — so the "hole" colour is the card, not ink.
+      hole: data.color,
+    };
+  }
+  return { bg: INK, text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: INK };
+}
+
 /* Breaks a single word that is itself wider than the line. Needed because the
  * identity is one invented word with no spaces in it — "the moskvetersburger"
  * has nowhere to wrap, so a whitespace-only splitter drew it straight past the
@@ -141,6 +167,8 @@ function metricsFor(over, u) {
 
 /* data: { handle, identity, line, path, years, color } */
 function drawCard(ctx, data) {
+  // Resolved once per render so every draw call below agrees with it.
+  const pal = paletteFor(data);
   const u = CARD_W / 100;
   const n = data.path.length;
   const baseOver = Math.max(0, n - 2);
@@ -179,7 +207,7 @@ function drawCard(ctx, data) {
     over += 1;
   }
 
-  ctx.fillStyle = INK;
+  ctx.fillStyle = pal.bg;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
   let y = padTop;
@@ -194,18 +222,18 @@ function drawCard(ctx, data) {
   // badge's 17u, so it costs no height — the row was already this tall.
   ctx.textAlign = 'left';
   ctx.font = `700 ${brandSize}px ${FONT_SANS}`;
-  ctx.fillStyle = TEXT;
+  ctx.fillStyle = pal.text;
   ctx.fillText('cityblend', padX, y + 1.4 * u + brandSize * 0.8);
 
   ctx.font = `${handleSize}px ${FONT_MONO}`;
-  ctx.fillStyle = TEXT_MUTED;
+  ctx.fillStyle = pal.muted;
   ctx.fillText(data.handle, padX, y + 1.4 * u + brandSize + 1.2 * u + handleSize * 0.85);
 
   const badgeCX = CARD_W - padX - badgeD / 2;
   const badgeCY = y + badgeD / 2;
   ctx.beginPath();
   ctx.arc(badgeCX, badgeCY, badgeD / 2 - 0.4 * u, 0, Math.PI * 2);
-  ctx.strokeStyle = data.color;
+  ctx.strokeStyle = pal.accent;
   ctx.lineWidth = 0.8 * u;
   ctx.stroke();
 
@@ -213,7 +241,7 @@ function drawCard(ctx, data) {
   // line-height 1) + 0.5u gap + label (2.2u) = 11.1u tall, so the pair is
   // centred by starting 5.55u above the circle's middle.
   ctx.textAlign = 'center';
-  ctx.fillStyle = data.color;
+  ctx.fillStyle = pal.accent;
   ctx.font = `700 ${8.4 * u}px ${FONT_SANS}`;
   ctx.fillText(String(n), badgeCX, badgeCY + 1.2 * u);
   ctx.font = `${2.2 * u}px ${FONT_MONO}`;
@@ -226,7 +254,7 @@ function drawCard(ctx, data) {
 
   /* ---- identity ---- */
   ctx.font = `700 ${identSize}px ${FONT_SANS}`;
-  ctx.fillStyle = TEXT;
+  ctx.fillStyle = pal.text;
   identLines.forEach((line, i) => {
     ctx.fillText(line, padX, y + identSize * 0.8 + i * identSize * 0.92);
   });
@@ -234,7 +262,7 @@ function drawCard(ctx, data) {
 
   /* ---- the dry line ---- */
   ctx.font = `500 ${m.lineSize}px ${FONT_SANS}`;
-  ctx.fillStyle = TEXT_SOFT;
+  ctx.fillStyle = pal.soft;
   lineRows.forEach((row, i) => {
     ctx.fillText(row, padX, y + m.lineSize * 0.8 + i * m.lineSize * 1.3);
   });
@@ -253,7 +281,7 @@ function drawCard(ctx, data) {
 
   // connector first, so dots sit on top of it
   if (n > 1) {
-    ctx.strokeStyle = data.color;
+    ctx.strokeStyle = pal.accent;
     ctx.lineWidth = 0.72 * u;
     ctx.beginPath();
     ctx.moveTo(dotX, dotCY(0));
@@ -268,21 +296,21 @@ function drawCard(ctx, data) {
     if (isNow) {
       ctx.beginPath();
       ctx.arc(dotX, cy, 2.2 * u, 0, Math.PI * 2);
-      ctx.fillStyle = data.color;
+      ctx.fillStyle = pal.accent;
       ctx.fill();
     } else {
       ctx.beginPath();
       ctx.arc(dotX, cy, 1.25 * u, 0, Math.PI * 2);
-      ctx.fillStyle = INK;
+      ctx.fillStyle = pal.hole;
       ctx.fill();
-      ctx.strokeStyle = data.color;
+      ctx.strokeStyle = pal.accent;
       ctx.lineWidth = 0.72 * u;
       ctx.stroke();
     }
 
     const baseline = rowTops[i] + citySize * 0.85;
     ctx.font = `${isNow ? 700 : 500} ${citySize}px ${FONT_SANS}`;
-    ctx.fillStyle = TEXT;
+    ctx.fillStyle = pal.text;
     const shown = formatCity(cityName, data.cityCase);
     ctx.fillText(shown, textX, baseline);
     const cityW = ctx.measureText(shown).width;
@@ -290,7 +318,7 @@ function drawCard(ctx, data) {
     const meta = metaFor(i, n - 1, data.years);
     if (meta) {
       ctx.font = `${metaSize}px ${FONT_MONO}`;
-      ctx.fillStyle = isNow ? data.color : TEXT_MUTED;
+      ctx.fillStyle = isNow ? pal.accent : pal.muted;
       ctx.fillText(meta, textX + cityW + 2.2 * u, baseline);
     }
   });
@@ -301,11 +329,11 @@ function drawCard(ctx, data) {
    * is drawn to survive being viewed at story scale: 16.4:1 and bold, against
    * 5.0:1 and regular for the invitation in front of it. */
   const footPrefix = 'and you? → ';
-  ctx.fillStyle = TEXT_MUTED;
+  ctx.fillStyle = pal.muted;
   ctx.font = `${3 * u}px ${FONT_MONO}`;
   ctx.fillText(footPrefix, padX, contentBottom);
   const prefixW = ctx.measureText(footPrefix).width;
-  ctx.fillStyle = TEXT;
+  ctx.fillStyle = pal.text;
   ctx.font = `700 ${3.4 * u}px ${FONT_MONO}`;
   ctx.fillText('cityblend.app', padX + prefixW, contentBottom);
 }
