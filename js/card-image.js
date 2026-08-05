@@ -54,26 +54,28 @@ const TEXT_MUTED = '#78848C';
  * friends' cards looked identical from any distance. Dark ink on all nine
  * clears 4.5:1 comfortably, which is why the flip is a palette swap rather
  * than a redesign. */
-/* Their colour, taken down to something a card can sit on.
+/* Two failed attempts are worth recording, because both were dead ends for
+ * reasons that are arithmetic rather than taste.
  *
- * The bright theme proved a saturated ground cannot work here: the card needs
- * three levels — ground, text, accent — and on full-strength orange the only
- * lighter accent available is white, which measures 1.3:1 to 2.6:1 across the
- * nine colours against the 3:1 a line or ring needs. There is nowhere for the
- * accent to go, so the badge and the route flatten into the type.
+ * A SATURATED GROUND cannot hold an accent. The card needs three levels —
+ * ground, text, accent — and on full-strength colour the only lighter accent
+ * available is white, which measures 1.30:1 to 2.64:1 across the nine route
+ * colours against the 3:1 a line or ring needs. The badge and the route
+ * flattened into the type and the card went from four tones to two.
  *
- * Deepening the ground instead keeps all four tones and still gives every
- * person a visibly different card: accent-on-ground lands 6:1 to 11:1 and
- * white-on-ground 14:1 to 16:1, across all nine. */
-function deepTint(hex) {
-  const f = 0.16;
-  const mix = (i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * f);
-  const hh = (n) => n.toString(16).padStart(2, '0');
-  return `#${hh(mix(1))}${hh(mix(3))}${hh(mix(5))}`;
-}
+ * A DEEPENED GROUND is either invisible or inaccessible. At 16% it sits
+ * 1.11:1 from the original near-black — literally imperceptible. Pushed until
+ * it reads as a colour at all, the muted route labels (#78848C, chosen for
+ * near-black) fall to 3.71:1 and below. There is no strength that is both
+ * visible and legible.
+ *
+ * A COLOUR FIELD works because it keeps the black ground rather than replacing
+ * it. Everything the route depends on is unchanged; the colour goes where dark
+ * ink can sit on it, and the transit line stays on black, which is the whole
+ * point of the card. */
 
 function paletteFor(data) {
-  if (data && data.theme === 'bright') {
+  if (data && data.theme === 'field') {
     return {
       bg: data.color,
       text: '#14161A',
@@ -87,12 +89,14 @@ function paletteFor(data) {
       hole: data.color,
     };
   }
-  if (data && data.theme === 'deep') {
-    const bg = deepTint(data.color);
-    // Everything else is unchanged from the original card on purpose: only the
-    // ground moves, so the hierarchy that made the badge and route read as the
-    // accent survives intact.
-    return { bg, text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: bg };
+  if (data && data.theme === 'field') {
+    // The part that sits ON the colour. Dark ink clears 6.2:1 on the weakest of
+    // the nine, and the muted grey is replaced by ink at 82% — 62% measured
+    // 3.21:1 on lilac, an AA failure on the smallest type on the card.
+    return {
+      bg: INK, text: '#14161A', soft: '#14161A', muted: 'rgba(20, 22, 26, 0.82)',
+      accent: '#14161A', hole: data.color, field: data.color,
+    };
   }
   return { bg: INK, text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: INK };
 }
@@ -237,6 +241,26 @@ function drawCard(ctx, data) {
   ctx.fillStyle = pal.bg;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
+  /* The colour field, sized from the layout rather than guessed.
+   * It ends where the route begins — the fit loop above already computed that
+   * y — so it can never cut through the identity no matter how the text wraps,
+   * which a fixed height would do on a two-line blend. */
+  let bandBottom = 0;
+  if (pal.field) {
+    bandBottom = padTop + (17 * u) + m.topGap
+      + identLines.length * identSize * 0.92 + m.identGap
+      + lineRows.length * m.lineSize * 1.3 + m.lineGap * 0.45;
+    ctx.fillStyle = pal.field;
+    ctx.fillRect(0, 0, CARD_W, bandBottom);
+  }
+  /* Below the field the original card is untouched: white on black with the
+   * accent in their colour. That is what keeps the route reading as a transit
+   * line at night, and it is why every contrast ratio already checked for the
+   * dark card still holds. */
+  const below = pal.field
+    ? { text: TEXT, soft: TEXT_SOFT, muted: TEXT_MUTED, accent: data.color, hole: INK }
+    : pal;
+
   let y = padTop;
 
   /* ---- wordmark + handle + stop badge ---- */
@@ -308,7 +332,7 @@ function drawCard(ctx, data) {
 
   // connector first, so dots sit on top of it
   if (n > 1) {
-    ctx.strokeStyle = pal.accent;
+    ctx.strokeStyle = below.accent;
     ctx.lineWidth = 0.72 * u;
     ctx.beginPath();
     ctx.moveTo(dotX, dotCY(0));
@@ -323,21 +347,21 @@ function drawCard(ctx, data) {
     if (isNow) {
       ctx.beginPath();
       ctx.arc(dotX, cy, 2.2 * u, 0, Math.PI * 2);
-      ctx.fillStyle = pal.accent;
+      ctx.fillStyle = below.accent;
       ctx.fill();
     } else {
       ctx.beginPath();
       ctx.arc(dotX, cy, 1.25 * u, 0, Math.PI * 2);
-      ctx.fillStyle = pal.hole;
+      ctx.fillStyle = below.hole;
       ctx.fill();
-      ctx.strokeStyle = pal.accent;
+      ctx.strokeStyle = below.accent;
       ctx.lineWidth = 0.72 * u;
       ctx.stroke();
     }
 
     const baseline = rowTops[i] + citySize * 0.85;
     ctx.font = `${isNow ? 700 : 500} ${citySize}px ${FONT_SANS}`;
-    ctx.fillStyle = pal.text;
+    ctx.fillStyle = below.text;
     const shown = formatCity(cityName, data.cityCase);
     ctx.fillText(shown, textX, baseline);
     const cityW = ctx.measureText(shown).width;
@@ -345,7 +369,7 @@ function drawCard(ctx, data) {
     const meta = metaFor(i, n - 1, data.years);
     if (meta) {
       ctx.font = `${metaSize}px ${FONT_MONO}`;
-      ctx.fillStyle = isNow ? pal.accent : pal.muted;
+      ctx.fillStyle = isNow ? below.accent : below.muted;
       ctx.fillText(meta, textX + cityW + 2.2 * u, baseline);
     }
   });
@@ -356,11 +380,11 @@ function drawCard(ctx, data) {
    * is drawn to survive being viewed at story scale: 16.4:1 and bold, against
    * 5.0:1 and regular for the invitation in front of it. */
   const footPrefix = 'and you? → ';
-  ctx.fillStyle = pal.muted;
+  ctx.fillStyle = below.muted;
   ctx.font = `${3 * u}px ${FONT_MONO}`;
   ctx.fillText(footPrefix, padX, contentBottom);
   const prefixW = ctx.measureText(footPrefix).width;
-  ctx.fillStyle = pal.text;
+  ctx.fillStyle = below.text;
   ctx.font = `700 ${3.4 * u}px ${FONT_MONO}`;
   ctx.fillText('cityblend.app', padX + prefixW, contentBottom);
 }

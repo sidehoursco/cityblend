@@ -239,26 +239,50 @@ body {
   --card-accent: var(--line);
 }
 
-/* Their own colour as the whole card.
-   The route already hashes to one of nine colours per person, and that was
-   spent on a 2px line — so two friends' cards were indistinguishable from
-   across a room. When five people post on the same night, five visibly
-   different cards read as something spreading; five near-identical dark ones
-   read as one template. Dark ink on all nine passes contrast comfortably. */
-.card.theme-bright {
-  --card-bg: var(--line);
+/* A colour field over the top of the card — their colour — with the route
+   left on black beneath it.
+   Two simpler versions failed for measurable reasons, both recorded because
+   they are dead ends rather than matters of taste. A fully saturated ground
+   leaves the accent nowhere to go: white reads 1.30:1 to 2.64:1 on these nine
+   colours against the 3:1 a line needs, so the badge and route flatten into
+   the type and four tones become two. A deepened ground is imperceptible at
+   16% (1.11:1 from the original black) and drops the muted labels below AA
+   once it is strong enough to see at all. Keeping the black ground and putting
+   colour where dark ink can sit on it is the only version that is both visible
+   and legible — and it keeps the transit-line-at-night idea intact. */
+.card.theme-field {
   --card-fg: #14161A;
   --card-fg-soft: #14161A;
-  /* 82%, not the 62% this started at.
-     At 62% the route's ORIGIN / n YRS labels measured 3.21:1 against the
-     lilac card — a WCAG AA failure on the smallest type on the card, which
-     is the exact bug caught once already on the dark version (#6E7A83 at
-     4.34:1). Checked against all nine colours rather than a favourite: the
-     worst case is lilac, and 82% puts it at 4.73:1 with the rest above it.
-     80% would technically clear it at 4.57:1; 82% leaves room for the
-     rounding the browser does when compositing. */
+  /* Ink at 82%. At 62% the small route labels measured 3.21:1 on the lilac
+     card — an AA failure on the smallest type, the same bug already caught
+     once on the dark version at 4.34:1. */
   --card-fg-muted: rgba(20, 22, 26, 0.82);
   --card-accent: #14161A;
+}
+
+.card.theme-field::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  /* Set from JS to the measured bottom of the joke, so the field cannot cut
+     through a two-line identity the way a fixed height would. */
+  height: var(--field-h, 46cqw);
+  background: var(--line);
+}
+
+/* The field paints over the card, so the content has to sit above it. */
+.card.theme-field > * { position: relative; z-index: 1; }
+
+/* Below the field, the original card is untouched: white on black with the
+   accent in their colour. This is the half that reads as a transit map, and
+   it is why every ratio already checked for the dark card still holds. */
+.card.theme-field .route,
+.card.theme-field .c-foot {
+  --card-fg: #F2F4F0;
+  --card-fg-soft: #E4E8E3;
+  --card-fg-muted: #78848C;
+  --card-accent: var(--line);
+  color: var(--card-fg);
 }
 
 .card__inner {
@@ -907,10 +931,15 @@ input[type="number"]:focus {
 .blending-track {
   position: relative;
   height: 3px;
-  /* Was var(--accent-light) — #E2E4DF on an #EDEFEB page, about a 5%
-     difference, which made the track invisible and left the dot reading as a
-     stray dash rather than something travelling along a line. */
-  background: rgba(20, 22, 26, 0.14);
+  /* Third value for this. var(--accent-light) was #E2E4DF on an #EDEFEB page —
+     a 5% difference, invisible. 14% black was better and still read as a faint
+     grey hairline rather than a track something travels along. This is the
+     same tone as the form field borders, which are unambiguously visible on
+     this background and are the closest thing the page has to a precedent. */
+  /* A resolved colour, not var(--border) at 55% opacity: opacity applies to
+     the whole subtree, so the travelling dot inside the track would have been
+     washed out with it. This is that blend, computed once. */
+  background: #AFB4B7;
   border-radius: 3px;
   overflow: hidden;
 }

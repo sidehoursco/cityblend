@@ -37,7 +37,7 @@ const copyLinkBtn = document.getElementById('copy-link-btn');
  * decision, not a correctness one, and the honest way to settle it is to look
  * at both on a phone with a real card in them. Whichever wins becomes the
  * default and this reader goes away. */
-const CARD_THEME = (/[?&]theme=(bright|deep)\b/.exec(location.search) || [])[1] || 'default';
+const CARD_THEME = /[?&]theme=field\b/.test(location.search) ? 'field' : 'default';
 
 // Everything the exported PNG needs, kept from the last successful generation.
 let lastCard = null;
@@ -519,11 +519,19 @@ async function generate(payload, isRegenerate) {
     // spacing compresses off --n; the line colour is the person's own
     resultCard.style.setProperty('--n', data.path.length);
     resultCard.style.setProperty('--line', lastCard.color);
-    resultCard.classList.toggle('theme-bright', CARD_THEME === 'bright');
-    resultCard.classList.toggle('theme-deep', CARD_THEME === 'deep');
-    // Computed rather than done with color-mix so the DOM card and the canvas
-    // derive the ground from one function and cannot drift apart.
-    if (CARD_THEME === 'deep') resultCard.style.setProperty('--card-bg', deepTint(lastCard.color));
+    resultCard.classList.toggle('theme-field', CARD_THEME === 'field');
+    /* The field ends just above the route, measured from the rendered card
+     * rather than assumed: a two-line identity or a three-line joke moves that
+     * boundary, and a fixed height would slice through the text. Deferred a
+     * frame so the browser has laid the card out before anything is measured. */
+    if (CARD_THEME === 'field') {
+      requestAnimationFrame(() => {
+        const route = resultCard.querySelector('.route');
+        const top = route.getBoundingClientRect().top - resultCard.getBoundingClientRect().top;
+        const gap = parseFloat(getComputedStyle(route).marginTop) || 0;
+        resultCard.style.setProperty('--field-h', `${Math.round(top - gap * 0.55)}px`);
+      });
+    }
     remainingNote.textContent = `${data.remaining} of ${data.limit} left this hour`;
 
     resultSection.hidden = false;
