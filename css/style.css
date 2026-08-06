@@ -247,6 +247,28 @@ body {
   box-shadow: 0 0 0 0.5cqw var(--card-bg), 0 0 0 1cqw var(--card-accent);
 }
 
+/* Other routes, behind the card. See ghostFor() in js/card-image.js for why
+   the angles are constrained to 0/45/90 and why the band sits below the
+   footer. Same geometry as the export, so the preview cannot drift from it. */
+.c-ghost {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  fill: none;
+  stroke: #3E4857;  /* keep in step with GHOST_INK in js/card-image.js */
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.c-ghost-stop { fill: var(--card-bg); }
+
+/* Everything on the card sits above the ghost layer. */
+.card > *:not(.c-ghost) { position: relative; z-index: 1; }
+
 /* A colour field over the top of the card — their colour — with the route
    left on black beneath it.
    Two simpler versions failed for measurable reasons, both recorded because

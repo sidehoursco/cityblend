@@ -41,6 +41,52 @@ const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
  * main.js imports this; the stylesheet cannot, so its rule carries a pointer
  * back here and the two are checked together. */
 const IDENT_BASE_CQW = 14.5;
+
+/* Ghost lines: other routes, running behind the card.
+ *
+ * Not decoration. A single line in an empty field reads as a diagram of
+ * nothing; a line among other lines reads as a fragment of a map, which is
+ * what the card has claimed to be since week 3 and has never actually looked
+ * like. It is the same move as the interchange markers — vocabulary the
+ * reference already owns, rather than a shape borrowed from nowhere.
+ *
+ * Three rules make it read as a map instead of as scribble:
+ *   1. Only 0, 45 and 90 degree segments. This is the actual constraint real
+ *      metro diagrams work under, and it is most of why they look the way they
+ *      do. Arbitrary angles would read as abstract lines immediately.
+ *   2. Confined to the band below the footer. That band is empty on every card
+ *      and is inside the Stories safe area, so Instagram's reply bar covers
+ *      part of it — decoration is exactly what belongs where content cannot.
+ *   3. Chosen by a hash of the path, like the colour, so it is stable across
+ *      rerolls. A card that reshuffles its background on every reroll would
+ *      stop feeling like the person's own.
+ *
+ * Coordinates are in card units: 100 wide, 177.78 tall (9:16). */
+/* 2.06:1 against the ground, not the 1.21:1 this was first set to.
+ * A 0.9u stroke is about ten pixels at export size, and thin marks need more
+ * separation than large areas to register at all — the same mistake as the
+ * 16% tint, which measured fine and was invisible on a phone. Type sits at
+ * ~15:1 and the route accent at 6-11:1, so this stays clearly subordinate. */
+const GHOST_INK = '#3E4857';
+
+const GHOST_VARIANTS = [
+  { lines: [[[-5, 158], [20, 158], [38, 176], [62, 176]],
+            [[72, 148], [72, 166], [90, 184]]],
+    stops: [[20, 158], [72, 166]] },
+  { lines: [[[-5, 170], [30, 170], [48, 152], [105, 152]],
+            [[15, 184], [15, 166], [33, 148]]],
+    stops: [[30, 170], [15, 166]] },
+  { lines: [[[-5, 152], [25, 152], [43, 170], [105, 170]],
+            [[62, 184], [62, 160], [78, 160]]],
+    stops: [[43, 170], [62, 160]] },
+];
+
+function ghostFor(path) {
+  const key = (path || []).join('|').toLowerCase();
+  let h = 0;
+  for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return GHOST_VARIANTS[h % GHOST_VARIANTS.length];
+}
 const FONT_MONO = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
 
 const INK = '#0D1014';
@@ -246,6 +292,25 @@ function drawCard(ctx, data) {
 
   ctx.fillStyle = pal.bg;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  // Behind everything, including the colour field.
+  const ghost = ghostFor(data.path);
+  ctx.strokeStyle = GHOST_INK;
+  ctx.lineWidth = 0.9 * u;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ghost.lines.forEach((pts) => {
+    ctx.beginPath();
+    pts.forEach(([gx, gy], i) => (i ? ctx.lineTo(gx * u, gy * u) : ctx.moveTo(gx * u, gy * u)));
+    ctx.stroke();
+  });
+  ghost.stops.forEach(([gx, gy]) => {
+    ctx.beginPath();
+    ctx.arc(gx * u, gy * u, 1.6 * u, 0, Math.PI * 2);
+    ctx.fillStyle = pal.bg;
+    ctx.fill();
+    ctx.stroke();
+  });
 
   /* The colour field, sized from the layout rather than guessed.
    * It ends where the route begins — the fit loop above already computed that

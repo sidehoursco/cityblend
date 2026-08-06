@@ -528,6 +528,29 @@ async function generate(payload, isRegenerate) {
     // spacing compresses off --n; the line colour is the person's own
     resultCard.style.setProperty('--n', data.path.length);
     resultCard.style.setProperty('--line', lastCard.color);
+    /* The same ghost lines as the export, from the same geometry, drawn as an
+     * SVG behind the card. The viewBox is exactly the card's 9:16, so the two
+     * cannot disagree about where a line sits. */
+    const ghost = ghostFor(data.path);
+    const old = resultCard.querySelector('.c-ghost');
+    if (old) old.remove();
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'c-ghost');
+    svg.setAttribute('viewBox', '0 0 100 177.78');
+    svg.setAttribute('aria-hidden', 'true');
+    ghost.lines.forEach((pts) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      el.setAttribute('points', pts.map((p) => p.join(',')).join(' '));
+      svg.appendChild(el);
+    });
+    ghost.stops.forEach(([gx, gy]) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      el.setAttribute('cx', gx); el.setAttribute('cy', gy); el.setAttribute('r', '1.6');
+      el.setAttribute('class', 'c-ghost-stop');
+      svg.appendChild(el);
+    });
+    resultCard.prepend(svg);
+
     resultCard.classList.toggle('theme-field', CARD_THEME === 'field');
     /* The field ends just above the route, measured from the rendered card
      * rather than assumed: a two-line identity or a three-line joke moves that
