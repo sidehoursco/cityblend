@@ -52,6 +52,13 @@ Distribution: not Instagram-exclusive. Optimized for Instagram/WhatsApp Stories 
 
 ## Card design — "Night Line" (decided week 3)
 
+> **Being revisited.** Three attempts to recolour this card were rejected on
+> 2026-08-05, and the reason they failed is that they were variants without a
+> brief. The design brief for reworking it — what is fixed, what is open, what
+> the content actually measures, and the dead ends already established — is in
+> [design-brief.md](design-brief.md). This section remains the record of what
+> was built in week 3 and why.
+
 Chosen over two alternatives (a passport/travel-document treatment, and a loud flat-colour poster). Rationale: it's the only direction that isn't already a known internet format, so it can read as a new thing rather than a Spotify Wrapped variant, and the form has a reason to look the way it does.
 
 - **Concept:** a transit line at night. This is the *universal* grammar of metro diagrams (coloured line, dots as stops, sequence over geography) shared by Tokyo, Moscow, Paris, Istanbul and Barcelona — deliberately **not** London's identity. Practical checks: use Helvetica-family type (the international/NYC-subway convention, not London's Johnston), and avoid the roundel, which is a Transport for London trademark. Chosen partly because metro diagrams are globally legible without a legend, which suits an app about people who've lived in several countries.
