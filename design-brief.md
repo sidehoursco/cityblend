@@ -66,9 +66,14 @@ Stop-count spread: `2:12 · 3:8 · 4:10 · 5:14 · 6:5 · 7:2`
    of the time. The identity can be set very large at a near-fixed size.
 2. **The joke is short prose, and 27% is two sentences.** Median 13 words. It
    needs 2–4 lines of comfortable measure, not a headline treatment.
-3. **Short paths are the most common single case.** Two stops is the largest
-   bucket (12 of 51). The design is currently tuned to survive 8 stops; it
-   should be tuned to *look best* at 2–5, and merely survive 7.
+3. **The distribution is broad, and it peaks at five — not at two.** Five stops
+   is the largest single bucket (14 of 51, 27%), two stops the second (12,
+   24%). Grouped: 39% at 2–3 stops, 47% at 4–5, 14% at 6–7. So there is no
+   dominant case to optimise for; the card has to look *deliberate* across the
+   whole 2–7 range rather than best at one end. The current design is tuned to
+   *survive* 8 stops, which is not the same thing — nobody has yet entered 8,
+   and the compression budget is being spent on a case that has never
+   occurred.
 
 ---
 
