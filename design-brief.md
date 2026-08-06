@@ -135,14 +135,30 @@ committed to.
 transit reference entirely and find another — provided the route survives as an
 element.
 
-Two arguments to weigh honestly, both real:
+**The week-3 argument for dark does not survive examination.** It was that a
+dark card "stands out more against a light-mode background" in feeds and DMs.
+Checked properly:
 
-- *For dark:* the week-3 rationale was that a dark card stands out against
-  light-mode backgrounds in feeds and DMs. That is about **thumbnails**, not
-  about the concept, and it is a genuine consideration.
-- *Against dark:* it is a category default. Every music, film and finance app
-  is near-black. A committed light or coloured card is rarer and more likely to
-  interrupt a scroll.
+- **Stories have no thumbnail.** The card is full-bleed, and Stories is the
+  primary channel and the one the whole design targets. The argument does not
+  apply to it at all.
+- **DMs are the only context that genuinely counts** — WhatsApp and Instagram,
+  where the card sits bounded in a chat bubble. But there the argument cancels
+  itself: it assumes a light-mode chat, and in dark mode — which most people
+  use — a near-black card *blends into* the bubble instead of standing out. It
+  is true for some recipients and actively false for others, in an unknown
+  split.
+- The camera roll is private and converts nobody. A 9:16 card posted to a feed
+  grid gets centre-cropped and is not the intended use. Link previews show
+  `og-image.jpg`, a separate asset.
+
+So there is **no evidenced argument for keeping the ground dark.** The honest
+position is that dark was chosen on taste and a plausible-sounding rationale
+that does not hold, and it should be re-decided on the concept alone.
+
+The one real argument against dark: it is the category default. Every music,
+film and finance app is near-black. A committed light or coloured card is rarer
+and more likely to interrupt a scroll.
 
 ---
 
