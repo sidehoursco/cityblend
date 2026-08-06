@@ -173,7 +173,13 @@ function metricsFor(over, u) {
   return {
     over,
     topGap: Math.max(2, 6.5 - over * 0.5) * u,
-    identSize: Math.max(6, 11.5 - over * 0.28) * u,
+    /* 14.5, up from 11.5. Measured across 51 real cards the blend is 7-15
+       characters with a median of 11, and only 1 in 51 ran past 14 — so the
+       old size was hedging for a two-line case that essentially never happens
+       and left the hero element smaller than it needed to be on every card.
+       identityFitScale still shrinks the rare long one to fit, so this makes
+       typical cards hit harder without risking the outliers. */
+    identSize: Math.max(6, 14.5 - over * 0.28) * u,
     identGap: Math.max(1.5, 5 - over * 0.3) * u,
     lineSize: Math.max(3, 4.7 - over * 0.1) * u,
     lineGap: Math.max(2, 7 - over * 0.8) * u,
@@ -326,9 +332,30 @@ function drawCard(ctx, data) {
     ctx.stroke();
   }
 
+  /* A city that appears more than once is a return, and metro diagrams have a
+   * symbol for exactly that: an interchange. Consecutive repeats are already
+   * merged server-side, so anything left here is a genuine leaving-and-coming-
+   * back — the most interesting thing a path can contain, and until now drawn
+   * identically to every other stop. */
+  const seen = data.path.reduce((acc, c) => {
+    const k = String(c).trim().toLowerCase();
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const isInterchange = (c) => seen[String(c).trim().toLowerCase()] > 1;
+
   data.path.forEach((cityName, i) => {
     const isNow = i === n - 1;
     const cy = dotCY(i);
+
+    // Drawn as a ring around the stop, the way a diagram marks one.
+    if (isInterchange(cityName)) {
+      ctx.beginPath();
+      ctx.arc(dotX, cy, 3.3 * u, 0, Math.PI * 2);
+      ctx.strokeStyle = below.accent;
+      ctx.lineWidth = 0.5 * u;
+      ctx.stroke();
+    }
 
     if (isNow) {
       ctx.beginPath();

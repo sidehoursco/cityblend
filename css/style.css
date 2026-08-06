@@ -239,6 +239,14 @@ body {
   --card-accent: var(--line);
 }
 
+/* A stop the route visits twice. Consecutive repeats are merged server-side,
+   so this only ever marks a genuine return — and a return is the single most
+   interesting thing a path can contain. Drawn as a ring, the way a metro
+   diagram marks an interchange. */
+.route li.is-interchange::before {
+  box-shadow: 0 0 0 0.5cqw var(--card-bg), 0 0 0 1cqw var(--card-accent);
+}
+
 /* A colour field over the top of the card — their colour — with the route
    left on black beneath it.
    Two simpler versions failed for measurable reasons, both recorded because

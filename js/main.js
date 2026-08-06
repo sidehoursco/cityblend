@@ -377,11 +377,19 @@ function collectPayload() {
 // names sit on their own dots, which is self-explanatory, fits 8 stops down
 // the tall axis, and gives the optional years somewhere to live.
 function buildRoute(container, path, years) {
+  /* Cities the route visits more than once. Consecutive repeats are merged
+   * server-side, so anything counted here is a real leaving-and-coming-back. */
+  const visits = path.reduce((acc, c) => {
+    const k = String(c).trim().toLowerCase();
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
   container.textContent = '';
   path.forEach((cityName, i) => {
     const isNow = i === path.length - 1;
     const row = document.createElement('li');
     if (isNow) row.className = 'is-now';
+    if (visits[String(cityName).trim().toLowerCase()] > 1) row.classList.add('is-interchange');
 
     const city = document.createElement('span');
     city.className = 'city';
