@@ -31,6 +31,16 @@ function formatCity(name, mode) {
 }
 
 const FONT_SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+
+/* The identity's base size, in cqw, shared by every renderer.
+ *
+ * It lived in three places — this file, setIdentityScale() in main.js, and the
+ * .c-identity rule — and raising it in one of them shipped a card whose export
+ * was 26% larger than its own preview, with the blend wrapping mid-word
+ * because the shrink factor was still being computed against the old size.
+ * main.js imports this; the stylesheet cannot, so its rule carries a pointer
+ * back here and the two are checked together. */
+const IDENT_BASE_CQW = 14.5;
 const FONT_MONO = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
 
 const INK = '#0D1014';
@@ -126,7 +136,11 @@ function identityFitScale(ctx, identity, availableRatio) {
   if (!widest) return 1;
   // floor at 0.7: past that the identity stops out-ranking the line below it,
   // and a mid-word break is the lesser evil.
-  return Math.max(0.7, Math.min(1, (availableRatio * probeSize) / widest));
+  /* 0.97, not 1: solving for an exact fit means a word that measures as
+     fitting can still wrap once the browser rounds, which is precisely how
+     "the moscelonian" ended up breaking after the n. Three percent of margin
+     costs nothing visible and removes the whole class of failure. */
+  return Math.max(0.7, Math.min(1, (availableRatio * probeSize * 0.97) / widest));
 }
 
 function wrapLines(ctx, text, maxWidth) {
@@ -179,7 +193,7 @@ function metricsFor(over, u) {
        and left the hero element smaller than it needed to be on every card.
        identityFitScale still shrinks the rare long one to fit, so this makes
        typical cards hit harder without risking the outliers. */
-    identSize: Math.max(6, 14.5 - over * 0.28) * u,
+    identSize: Math.max(6, IDENT_BASE_CQW - over * 0.28) * u,
     identGap: Math.max(1.5, 5 - over * 0.3) * u,
     lineSize: Math.max(3, 4.7 - over * 0.1) * u,
     lineGap: Math.max(2, 7 - over * 0.8) * u,

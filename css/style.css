@@ -388,7 +388,10 @@ body {
   /* --ident-scale is set by JS (setIdentityScale) using the same measurement
      the canvas renderer uses, so the on-page card and the exported PNG shrink
      identically. Defaults to 1 so the card is still correct without JS. */
-  font-size: calc((11.5cqw - var(--over) * 0.28cqw) * var(--ident-scale, 1));
+  /* Keep 14.5 in step with IDENT_BASE_CQW in js/card-image.js — a stylesheet
+     cannot import it, and when these two disagreed the exported PNG came out
+     26% larger than the preview it was supposed to be a copy of. */
+  font-size: calc((14.5cqw - var(--over) * 0.28cqw) * var(--ident-scale, 1));
   line-height: 0.92;
   letter-spacing: -0.04em;
   font-weight: 700;

@@ -159,7 +159,8 @@ function setIdentityScale(card, identity, stopCount) {
   const over = Math.max(0, stopCount - 2);
   // usable width is 84cqw (100 minus 8cqw padding each side); the base font is
   // this many cqw, so their ratio is the width available in font-size units
-  const baseFontCqw = Math.max(6, 11.5 - over * 0.28);
+  // IDENT_BASE_CQW comes from card-image.js so this cannot drift from the export.
+  const baseFontCqw = Math.max(6, IDENT_BASE_CQW - over * 0.28);
   const probe = document.createElement('canvas').getContext('2d');
   card.style.setProperty('--ident-scale', identityFitScale(probe, identity, 84 / baseFontCqw).toFixed(3));
 }
